@@ -12,14 +12,14 @@ class BoxSetIndicator(IndicatorCost):
         lower_bound: Array | SupportedArrayTypes,
         upper_bound: Array | SupportedArrayTypes,
     ):
-        if iop.shape(lower_bound) != iop.shape(upper_bound):
+        if iop.shape(lower_bound) != iop.shape(upper_bound):  # type: ignore[arg-type]
             raise ValueError("`lower_bound` and `upper_bound` must have the same shape.")
-        framework_lower, device_lower = iop.framework_device_of_array(lower_bound)
-        framework_upper, device_upper = iop.framework_device_of_array(upper_bound)
+        framework_lower, device_lower = iop.framework_device_of_array(lower_bound)  # type: ignore[arg-type]
+        framework_upper, device_upper = iop.framework_device_of_array(upper_bound)  # type: ignore[arg-type]
         if framework_lower != framework_upper or device_lower != device_upper:
             raise ValueError("`lower_bound` and `upper_bound` must have the framework and device")
 
-        super().__init__(iop.shape(lower_bound), framework=framework_lower, device=device_lower)
+        super().__init__(iop.shape(lower_bound), framework=framework_lower, device=device_lower)  # type: ignore[arg-type]
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
 
@@ -29,4 +29,4 @@ class BoxSetIndicator(IndicatorCost):
 
     def belongs_to_set(self, x: Array) -> bool:
         """Method checking whether `x` belongs to the convex set that defines the indicator cost."""
-        return iop.all(x >= self.lower_bound) and iop.all(x <= self.upper_bound)
+        return bool(iop.all(x >= self.lower_bound) and iop.all(x <= self.upper_bound))
