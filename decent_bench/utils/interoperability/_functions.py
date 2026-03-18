@@ -1061,3 +1061,34 @@ def diag(array: Array) -> Array:
         return _return_array(jnp.diag(value))
 
     raise TypeError(f"Unsupported framework type: {type(value)}")
+
+
+def all(array: Array, dim: int | tuple[int, ...] | None = None, keepdims: bool = False) -> Array:
+    """
+    Test if all array elements along a given dimension evaluate to True.
+
+    Args:
+        array (Array): Input array.
+        dim (int | tuple[int, ...] | None): Dimension or dimensions to evaluate on.
+            If None, evaluates on all elements of the array.
+        keepdims (bool): If True, retains dimensions `dim`.
+
+    Returns:
+        Array: array of boolean values.
+
+    Raises:
+        TypeError: if the framework type of `array` is unsupported.
+
+    """
+    value = array.value if isinstance(array, Array) else array
+
+    if isinstance(value, np.ndarray | np.generic):
+        return _return_array(np.all(value, axis=dim, keepdims=keepdims))
+    if torch and isinstance(value, torch.Tensor):
+        return _return_array(torch.all(value, dim=dim, keepdim=keepdims))
+    if tf and isinstance(value, tf.Tensor):
+        return _return_array(tf.reduce_all(value, axis=dim, keepdims=keepdims))
+    if jnp and isinstance(value, jnp.ndarray | jnp.generic):
+        return _return_array(jnp.all(value, axis=dim, keepdims=keepdims))
+
+    raise TypeError(f"Unsupported framework type: {type(value)}")

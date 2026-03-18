@@ -575,3 +575,64 @@ def maximum(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayT
         raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
 
     return _return_array(result)
+
+
+def minimum(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayTypes) -> Array:
+    """
+    Element-wise minimum of two arrays.
+
+    Args:
+        array1 (Array | SupportedArrayTypes): First input array.
+        array2 (Array | SupportedArrayTypes): Second input array.
+
+    Returns:
+        Array: Result of element-wise minimum in the same framework type as the inputs.
+
+    Raises:
+        TypeError: if the framework type of the input arrays is unsupported
+            or if the input arrays are not of the same framework type.
+
+    """
+    value1 = array1.value if isinstance(array1, Array) else array1
+    value2 = array2.value if isinstance(array2, Array) else array2
+
+    def _is_scalar(value: object) -> bool:
+        return isinstance(value, Real) and not isinstance(value, bool)
+
+    def _is_jax_array(value: object) -> bool:
+        return (
+            isinstance(value, _jnp_types)
+            or (jax is not None and hasattr(jax, "Array") and isinstance(value, jax.Array))
+            or type(value).__module__.startswith(("jax", "jaxlib"))
+        )
+
+    result = None
+
+    if (isinstance(value1, _np_types) and (isinstance(value2, _np_types) or _is_scalar(value2))) or (
+        isinstance(value2, _np_types) and _is_scalar(value1)
+    ):
+        result = np.minimum(value1, value2)
+    elif torch and (isinstance(value1, torch.Tensor) or isinstance(value2, torch.Tensor)):
+        tensor = value1 if isinstance(value1, torch.Tensor) else value2
+        other = value2 if tensor is value1 else value1
+        tensor_t = cast("TorchTensor", tensor)
+        if isinstance(other, torch.Tensor):
+            result = torch.minimum(tensor_t, other)
+        elif _is_scalar(other):
+            result = torch.minimum(tensor_t, torch.tensor(other, device=tensor_t.device, dtype=tensor_t.dtype))
+    elif tf and (isinstance(value1, tf.Tensor) or isinstance(value2, tf.Tensor)):
+        tensor = value1 if isinstance(value1, tf.Tensor) else value2
+        other = value2 if tensor is value1 else value1
+        if isinstance(other, _tf_types) or _is_scalar(other):
+            result = tf.minimum(tensor, other)
+    elif _is_jax_array(value1) or _is_jax_array(value2):
+        jnp_module = jnp or importlib.import_module("jax.numpy")
+        tensor = value1 if not _is_scalar(value1) else value2
+        other = value2 if tensor is value1 else value1
+        if _is_jax_array(other) or _is_scalar(other):
+            result = jnp_module.minimum (tensor, other)
+
+    if result is None:
+        raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
+
+    return _return_array(result)

@@ -9,6 +9,7 @@ from __future__ import annotations
 from . import _ext as ext
 from ._decorators import autodecorate_cost_method
 from ._functions import (
+    all,
     argmax,
     argmin,
     astype,
@@ -49,6 +50,7 @@ from ._operators import (
     dot,
     matmul,
     maximum,
+    minimum,
     mul,
     negative,
     power,
@@ -59,6 +61,7 @@ from ._operators import (
 
 __all__ = [  # noqa: RUF022
     # From _functions
+    "all",
     "argmax",
     "argmin",
     "astype",
@@ -97,6 +100,7 @@ __all__ = [  # noqa: RUF022
     "dot",
     "matmul",
     "maximum",
+    "minimum",
     "mul",
     "negative",
     "power",
