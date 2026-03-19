@@ -1,7 +1,9 @@
-from ._box import BoxSetIndicator
+from ._box import BoxIndicator
 from ._indicator_cost import IndicatorCost
+from ._nonnegative import NonnegativeIndicator
 
 __all__ = [
-    "BoxSetIndicator",
+    "BoxIndicator",
     "IndicatorCost",
+    "NonnegativeIndicator",
 ]

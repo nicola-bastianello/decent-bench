@@ -1,11 +1,13 @@
 import decent_bench.utils.interoperability as iop
+from decent_bench.costs._base._cost import Cost
+from decent_bench.costs._base._sum_cost import SumCost
 from decent_bench.utils.array import Array
 from decent_bench.utils.types import SupportedArrayTypes
 
 from ._indicator_cost import IndicatorCost
 
 
-class BoxSetIndicator(IndicatorCost):
+class BoxIndicator(IndicatorCost):
     r"""Indicator cost for a box set :math:`\mathbb{X} = [\mathbf{\ell}, \mathbf{u}]`."""
 
     def __init__(
@@ -19,6 +21,8 @@ class BoxSetIndicator(IndicatorCost):
         framework_upper, device_upper = iop.framework_device_of_array(upper_bound)  # type: ignore[arg-type]
         if framework_lower != framework_upper or device_lower != device_upper:
             raise ValueError("`lower_bound` and `upper_bound` must have the framework and device")
+        if not bool(iop.to_numpy(iop.all(iop.less_equal(lower_bound, upper_bound))).item()):
+            raise ValueError("`lower_bound` must be less than or equal to `upper_bound` element-wise.")
 
         super().__init__(iop.shape(lower_bound), framework=framework_lower, device=device_lower)  # type: ignore[arg-type]
         self.lower_bound = lower_bound
@@ -30,4 +34,23 @@ class BoxSetIndicator(IndicatorCost):
 
     def belongs_to_set(self, x: Array) -> bool:
         """Check whether `x` belongs to the convex set that defines the indicator cost."""
-        return bool(iop.all(x >= self.lower_bound) and iop.all(x <= self.upper_bound))
+        lower_ok = bool(iop.to_numpy(iop.all(iop.greater_equal(x, self.lower_bound))).item())
+        upper_ok = bool(iop.to_numpy(iop.all(iop.less_equal(x, self.upper_bound))).item())
+        return lower_ok and upper_ok
+
+    def __add__(self, other: Cost) -> Cost:
+        """
+        Add another cost function.
+
+        Raises:
+            ValueError: if the domain shapes don't match
+
+        """
+        if self.shape != other.shape:
+            raise ValueError(f"Mismatching domain shapes: {self.shape} vs {other.shape}")
+        if isinstance(other, BoxIndicator):
+            return BoxIndicator(
+                iop.maximum(self.lower_bound, other.lower_bound), iop.minimum(self.upper_bound, other.upper_bound)
+            )
+
+        return SumCost([self, other])
