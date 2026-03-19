@@ -25,7 +25,7 @@ class NonnegativeIndicator(IndicatorCost):
 
     def belongs_to_set(self, x: Array) -> bool:
         """Check whether `x` belongs to the convex set that defines the indicator cost."""
-        return bool(iop.to_numpy(iop.all(iop.greater_equal(x, 0))).item())
+        return iop.to_python_bool(iop.all(x >= 0))
 
     def __add__(self, other: Cost) -> Cost:
         """

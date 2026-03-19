@@ -2,10 +2,54 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 from decent_bench.utils.array import Array
 from decent_bench.utils.types import SupportedArrayTypes, SupportedDevices, SupportedFrameworks
 
 from ._imports_types import _jnp_types, _np_types, _tf_types, _torch_types, jax, jnp, tf, torch
+
+
+def to_python_bool(array: Array | SupportedArrayTypes) -> bool:
+    """
+    Convert a scalar backend value to a Python bool.
+
+    Args:
+        array (Array | SupportedArrayTypes): Scalar-like backend value.
+
+    Returns:
+        bool: Python boolean value.
+
+    Raises:
+        ValueError: if `array` is not scalar-like.
+        TypeError: if `array` has an unsupported type.
+
+    """
+    value = array.value if isinstance(array, Array) else array
+
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, np.ndarray | np.generic):
+        scalar = np.asarray(value)
+        if scalar.size != 1:
+            raise ValueError("Expected a scalar-like value for boolean conversion.")
+        return bool(scalar.item())
+    if torch and isinstance(value, torch.Tensor):
+        if value.numel() != 1:
+            raise ValueError("Expected a scalar-like value for boolean conversion.")
+        return bool(value.item())
+    if tf and isinstance(value, tf.Tensor):
+        scalar = np.asarray(value)
+        if scalar.size != 1:
+            raise ValueError("Expected a scalar-like value for boolean conversion.")
+        return bool(scalar.item())
+    if jnp and isinstance(value, _jnp_types):
+        scalar = np.asarray(value)
+        if scalar.size != 1:
+            raise ValueError("Expected a scalar-like value for boolean conversion.")
+        return bool(scalar.item())
+
+    raise TypeError(f"Unsupported type for boolean conversion: {type(value)}")
 
 
 def device_to_framework_device(device: SupportedDevices, framework: SupportedFrameworks) -> Any:  # noqa: ANN401

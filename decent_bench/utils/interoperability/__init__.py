@@ -42,7 +42,7 @@ from ._functions import (
     zeros,
     zeros_like,
 )
-from ._helpers import device_to_framework_device, framework_device_of_array
+from ._helpers import device_to_framework_device, framework_device_of_array, to_python_bool
 from ._operators import (
     absolute,
     add,
@@ -121,6 +121,7 @@ __all__ = [  # noqa: RUF022
     "sign",
     "sqrt",
     "sub",
+    "to_python_bool",
     # From _helpers
     "device_to_framework_device",
     "framework_device_of_array",

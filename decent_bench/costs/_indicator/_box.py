@@ -21,7 +21,7 @@ class BoxIndicator(IndicatorCost):
         framework_upper, device_upper = iop.framework_device_of_array(upper_bound)  # type: ignore[arg-type]
         if framework_lower != framework_upper or device_lower != device_upper:
             raise ValueError("`lower_bound` and `upper_bound` must have the framework and device")
-        if not bool(iop.to_numpy(iop.all(iop.less_equal(lower_bound, upper_bound))).item()):
+        if not iop.to_python_bool(iop.all(iop.less_equal(lower_bound, upper_bound))):
             raise ValueError("`lower_bound` must be less than or equal to `upper_bound` element-wise.")
 
         super().__init__(iop.shape(lower_bound), framework=framework_lower, device=device_lower)  # type: ignore[arg-type]
@@ -34,9 +34,7 @@ class BoxIndicator(IndicatorCost):
 
     def belongs_to_set(self, x: Array) -> bool:
         """Check whether `x` belongs to the convex set that defines the indicator cost."""
-        lower_ok = bool(iop.to_numpy(iop.all(iop.greater_equal(x, self.lower_bound))).item())
-        upper_ok = bool(iop.to_numpy(iop.all(iop.less_equal(x, self.upper_bound))).item())
-        return lower_ok and upper_ok
+        return iop.to_python_bool(iop.all((x >= self.lower_bound) & (x <= self.upper_bound)))
 
     def __add__(self, other: Cost) -> Cost:
         """
