@@ -630,9 +630,195 @@ def minimum(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayT
         tensor = value1 if not _is_scalar(value1) else value2
         other = value2 if tensor is value1 else value1
         if _is_jax_array(other) or _is_scalar(other):
-            result = jnp_module.minimum (tensor, other)
+            result = jnp_module.minimum(tensor, other)
 
     if result is None:
         raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
 
     return _return_array(result)
+
+
+def equal(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayTypes) -> Array:
+    """
+    Element-wise equality comparison of two arrays.
+
+    Args:
+        array1 (Array | SupportedArrayTypes): First input array.
+        array2 (Array | SupportedArrayTypes): Second input array.
+
+    Returns:
+        Array: Element-wise comparison result.
+
+    Raises:
+        TypeError: if the framework type of the input arrays is unsupported
+            or if the input arrays are not of the same framework type.
+
+    """
+    value1 = array1.value if isinstance(array1, Array) else array1
+    value2 = array2.value if isinstance(array2, Array) else array2
+
+    if isinstance(value1, _np_types):
+        return _return_array(np.equal(value1, value2))
+    if torch and isinstance(value1, _torch_types) and isinstance(value2, _torch_types):
+        return _return_array(torch.eq(value1, value2))
+    if tf and isinstance(value1, _tf_types) and isinstance(value2, _tf_types):
+        return _return_array(tf.equal(value1, value2))
+    if jnp and isinstance(value1, _jnp_types) and isinstance(value2, _jnp_types):
+        return _return_array(jnp.equal(value1, value2))
+
+    raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
+
+
+def not_equal(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayTypes) -> Array:
+    """
+    Element-wise inequality comparison of two arrays.
+
+    Args:
+        array1 (Array | SupportedArrayTypes): First input array.
+        array2 (Array | SupportedArrayTypes): Second input array.
+
+    Returns:
+        Array: Element-wise comparison result.
+
+    Raises:
+        TypeError: if the framework type of the input arrays is unsupported
+            or if the input arrays are not of the same framework type.
+
+    """
+    value1 = array1.value if isinstance(array1, Array) else array1
+    value2 = array2.value if isinstance(array2, Array) else array2
+
+    if isinstance(value1, _np_types):
+        return _return_array(np.not_equal(value1, value2))
+    if torch and isinstance(value1, _torch_types) and isinstance(value2, _torch_types):
+        return _return_array(torch.ne(value1, value2))
+    if tf and isinstance(value1, _tf_types) and isinstance(value2, _tf_types):
+        return _return_array(tf.not_equal(value1, value2))
+    if jnp and isinstance(value1, _jnp_types) and isinstance(value2, _jnp_types):
+        return _return_array(jnp.not_equal(value1, value2))
+
+    raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
+
+
+def less(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayTypes) -> Array:
+    """
+    Element-wise less-than comparison of two arrays.
+
+    Args:
+        array1 (Array | SupportedArrayTypes): First input array.
+        array2 (Array | SupportedArrayTypes): Second input array.
+
+    Returns:
+        Array: Element-wise comparison result.
+
+    Raises:
+        TypeError: if the framework type of the input arrays is unsupported
+            or if the input arrays are not of the same framework type.
+
+    """
+    value1 = array1.value if isinstance(array1, Array) else array1
+    value2 = array2.value if isinstance(array2, Array) else array2
+
+    if isinstance(value1, _np_types):
+        return _return_array(np.less(value1, value2))
+    if torch and isinstance(value1, _torch_types) and isinstance(value2, _torch_types):
+        return _return_array(torch.lt(value1, value2))
+    if tf and isinstance(value1, _tf_types) and isinstance(value2, _tf_types):
+        return _return_array(tf.less(value1, value2))
+    if jnp and isinstance(value1, _jnp_types) and isinstance(value2, _jnp_types):
+        return _return_array(jnp.less(value1, value2))
+
+    raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
+
+
+def less_equal(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayTypes) -> Array:
+    """
+    Element-wise less-than-or-equal comparison of two arrays.
+
+    Args:
+        array1 (Array | SupportedArrayTypes): First input array.
+        array2 (Array | SupportedArrayTypes): Second input array.
+
+    Returns:
+        Array: Element-wise comparison result.
+
+    Raises:
+        TypeError: if the framework type of the input arrays is unsupported
+            or if the input arrays are not of the same framework type.
+
+    """
+    value1 = array1.value if isinstance(array1, Array) else array1
+    value2 = array2.value if isinstance(array2, Array) else array2
+
+    if isinstance(value1, _np_types):
+        return _return_array(np.less_equal(value1, value2))
+    if torch and isinstance(value1, _torch_types) and isinstance(value2, _torch_types):
+        return _return_array(torch.le(value1, value2))
+    if tf and isinstance(value1, _tf_types) and isinstance(value2, _tf_types):
+        return _return_array(tf.less_equal(value1, value2))
+    if jnp and isinstance(value1, _jnp_types) and isinstance(value2, _jnp_types):
+        return _return_array(jnp.less_equal(value1, value2))
+
+    raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
+
+
+def greater(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayTypes) -> Array:
+    """
+    Element-wise greater-than comparison of two arrays.
+
+    Args:
+        array1 (Array | SupportedArrayTypes): First input array.
+        array2 (Array | SupportedArrayTypes): Second input array.
+
+    Returns:
+        Array: Element-wise comparison result.
+
+    Raises:
+        TypeError: if the framework type of the input arrays is unsupported
+            or if the input arrays are not of the same framework type.
+
+    """
+    value1 = array1.value if isinstance(array1, Array) else array1
+    value2 = array2.value if isinstance(array2, Array) else array2
+
+    if isinstance(value1, _np_types):
+        return _return_array(np.greater(value1, value2))
+    if torch and isinstance(value1, _torch_types) and isinstance(value2, _torch_types):
+        return _return_array(torch.gt(value1, value2))
+    if tf and isinstance(value1, _tf_types) and isinstance(value2, _tf_types):
+        return _return_array(tf.greater(value1, value2))
+    if jnp and isinstance(value1, _jnp_types) and isinstance(value2, _jnp_types):
+        return _return_array(jnp.greater(value1, value2))
+
+    raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
+
+
+def greater_equal(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayTypes) -> Array:
+    """
+    Element-wise greater-than-or-equal comparison of two arrays.
+
+    Args:
+        array1 (Array | SupportedArrayTypes): First input array.
+        array2 (Array | SupportedArrayTypes): Second input array.
+
+    Returns:
+        Array: Element-wise comparison result.
+
+    Raises:
+        TypeError: if the framework type of the input arrays is unsupported
+            or if the input arrays are not of the same framework type.
+
+    """
+    value1 = array1.value if isinstance(array1, Array) else array1
+    value2 = array2.value if isinstance(array2, Array) else array2
+
+    if isinstance(value1, _np_types):
+        return _return_array(np.greater_equal(value1, value2))
+    if torch and isinstance(value1, _torch_types) and isinstance(value2, _torch_types):
+        return _return_array(torch.ge(value1, value2))
+    if tf and isinstance(value1, _tf_types) and isinstance(value2, _tf_types):
+        return _return_array(tf.greater_equal(value1, value2))
+    if jnp and isinstance(value1, _jnp_types) and isinstance(value2, _jnp_types):
+        return _return_array(jnp.greater_equal(value1, value2))
+
+    raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")

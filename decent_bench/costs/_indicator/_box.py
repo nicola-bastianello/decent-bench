@@ -1,7 +1,8 @@
 import decent_bench.utils.interoperability as iop
 from decent_bench.utils.array import Array
-from ._indicator_cost import IndicatorCost
 from decent_bench.utils.types import SupportedArrayTypes
+
+from ._indicator_cost import IndicatorCost
 
 
 class BoxSetIndicator(IndicatorCost):
@@ -28,5 +29,5 @@ class BoxSetIndicator(IndicatorCost):
         return iop.maximum(self.lower_bound, iop.minimum(self.upper_bound, x))
 
     def belongs_to_set(self, x: Array) -> bool:
-        """Method checking whether `x` belongs to the convex set that defines the indicator cost."""
+        """Check whether `x` belongs to the convex set that defines the indicator cost."""
         return bool(iop.all(x >= self.lower_bound) and iop.all(x <= self.upper_bound))

@@ -1970,6 +1970,128 @@ def test_maximum_array_array_frameworks(framework: str, device: str) -> None:
         ),
     ],
 )
+def test_comparison_operators_frameworks(framework: str, device: str) -> None:
+    """Test comparison operators for all frameworks and devices."""
+    data1 = [1.0, 2.0, 3.0]
+    data2 = [1.0, 1.5, 4.0]
+    arr1 = create_array(data1, framework, device)
+    arr2 = create_array(data2, framework, device)
+
+    np_arr1 = create_array(data1, "numpy")
+    np_arr2 = create_array(data2, "numpy")
+
+    comparisons = [
+        (iop.equal, np.equal),
+        (iop.not_equal, np.not_equal),
+        (iop.less, np.less),
+        (iop.less_equal, np.less_equal),
+        (iop.greater, np.greater),
+        (iop.greater_equal, np.greater_equal),
+    ]
+
+    for iop_op, np_op in comparisons:
+        result = iop_op(arr1, arr2)
+        expected = np_op(np_arr1, np_arr2)
+        assert_arrays_equal(result, expected, framework)
+        assert_same_type(result, framework)
+
+
+@pytest.mark.parametrize(
+    ("framework", "device"),
+    [
+        ("numpy", "cpu"),
+        pytest.param(
+            "pytorch",
+            "cpu",
+            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
+        ),
+        pytest.param(
+            "pytorch",
+            "gpu",
+            marks=pytest.mark.skipif(not TORCH_CUDA_AVAILABLE, reason="PyTorch CUDA not available"),
+        ),
+        pytest.param(
+            "tensorflow",
+            "cpu",
+            marks=pytest.mark.skipif(not TF_AVAILABLE, reason="TensorFlow not available"),
+        ),
+        pytest.param(
+            "tensorflow",
+            "gpu",
+            marks=pytest.mark.skipif(not TF_GPU_AVAILABLE, reason="TensorFlow GPU not available"),
+        ),
+        pytest.param(
+            "jax",
+            "cpu",
+            marks=pytest.mark.skipif(not JAX_AVAILABLE, reason="JAX not available"),
+        ),
+        pytest.param(
+            "jax",
+            "gpu",
+            marks=pytest.mark.skipif(not JAX_GPU_AVAILABLE, reason="JAX GPU not available"),
+        ),
+    ],
+)
+def test_comparison_operators_array_scalar_frameworks(framework: str, device: str) -> None:
+    """Test comparison operators with array/scalar inputs for all frameworks and devices."""
+    data = [1.0, 2.0, 3.0]
+    scalar = 2.0
+    arr = create_array(data, framework, device)
+
+    np_arr = create_array(data, "numpy")
+
+    comparisons = [
+        (iop.equal, np.equal),
+        (iop.not_equal, np.not_equal),
+        (iop.less, np.less),
+        (iop.less_equal, np.less_equal),
+        (iop.greater, np.greater),
+        (iop.greater_equal, np.greater_equal),
+    ]
+
+    for iop_op, np_op in comparisons:
+        result = iop_op(arr, scalar)
+        expected = np_op(np_arr, scalar)
+        assert_arrays_equal(result, expected, framework)
+        assert_same_type(result, framework)
+
+
+@pytest.mark.parametrize(
+    ("framework", "device"),
+    [
+        ("numpy", "cpu"),
+        pytest.param(
+            "pytorch",
+            "cpu",
+            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
+        ),
+        pytest.param(
+            "pytorch",
+            "gpu",
+            marks=pytest.mark.skipif(not TORCH_CUDA_AVAILABLE, reason="PyTorch CUDA not available"),
+        ),
+        pytest.param(
+            "tensorflow",
+            "cpu",
+            marks=pytest.mark.skipif(not TF_AVAILABLE, reason="TensorFlow not available"),
+        ),
+        pytest.param(
+            "tensorflow",
+            "gpu",
+            marks=pytest.mark.skipif(not TF_GPU_AVAILABLE, reason="TensorFlow GPU not available"),
+        ),
+        pytest.param(
+            "jax",
+            "cpu",
+            marks=pytest.mark.skipif(not JAX_AVAILABLE, reason="JAX not available"),
+        ),
+        pytest.param(
+            "jax",
+            "gpu",
+            marks=pytest.mark.skipif(not JAX_GPU_AVAILABLE, reason="JAX GPU not available"),
+        ),
+    ],
+)
 def test_diag_frameworks(framework: str, device: str) -> None:
     """Test diag function for all frameworks and devices."""
     data = [1.0, 2.0, 3.0]

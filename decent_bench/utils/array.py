@@ -255,6 +255,32 @@ class Array:  # noqa: PLR0904
         """
         return iop.absolute(self)
 
+    __hash__ = None  # type: ignore[assignment]
+
+    def __eq__(self, other: Array | SupportedArrayTypes) -> Array:  # type: ignore[override]
+        """Element-wise equality comparison."""
+        return iop.equal(self, other)
+
+    def __ne__(self, other: Array | SupportedArrayTypes) -> Array:  # type: ignore[override]
+        """Element-wise inequality comparison."""
+        return iop.not_equal(self, other)
+
+    def __lt__(self, other: Array | SupportedArrayTypes) -> Array:  # type: ignore[misc]
+        """Element-wise less-than comparison."""
+        return iop.less(self, other)
+
+    def __le__(self, other: Array | SupportedArrayTypes) -> Array:  # type: ignore[misc]
+        """Element-wise less-than-or-equal comparison."""
+        return iop.less_equal(self, other)
+
+    def __gt__(self, other: Array | SupportedArrayTypes) -> Array:  # type: ignore[misc]
+        """Element-wise greater-than comparison."""
+        return iop.greater(self, other)
+
+    def __ge__(self, other: Array | SupportedArrayTypes) -> Array:  # type: ignore[misc]
+        """Element-wise greater-than-or-equal comparison."""
+        return iop.greater_equal(self, other)
+
     def __getitem__(self, key: ArrayKey) -> Array:
         """
         Get an item or slice from the wrapped tensor.

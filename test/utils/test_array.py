@@ -377,6 +377,92 @@ class TestArrayOperators:
         expected = abs(expected)
         assert_arrays_equal(d, expected, framework)
 
+    def test_comparisons(self, framework: str, device: str) -> None:
+        """Test element-wise comparison operators."""
+        a = create_array([[1, 2], [3, 4]], framework, device)
+        b = create_array([[1, 1], [3, 5]], framework, device)
+        c = create_array([[0, 1], [2, 3]], framework, device)
+        d = create_array([[2, 3], [4, 5]], framework, device)
+
+        # test __eq__
+        result = a == a
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a == b
+        expected = create_array([[True, False], [True, False]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        # test __ne__
+        result = a != b
+        expected = create_array([[False, True], [False, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a != a
+        expected = create_array([[False, False], [False, False]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        # test __lt__
+        result = a < d
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a < b
+        expected = create_array([[False, False], [False, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        # test __le__
+        result = a <= d
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a <= a
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        # test __gt__
+        result = a > c
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a > b
+        expected = create_array([[False, True], [False, False]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        # test __ge__
+        result = a >= c
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a >= a
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        # test with scalar comparisons
+        result = a == 0
+        expected = create_array([[False, False], [False, False]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a != 0
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a > 0
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a >= 1
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a < 10
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = a <= 4
+        expected = create_array([[True, True], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
     def test_getitem(self, framework: str, device: str) -> None:
         """Test __getitem__ method."""
         a = create_array([[1, 2, 3], [4, 5, 6]], framework, device)

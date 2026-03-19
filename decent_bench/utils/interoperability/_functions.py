@@ -1063,7 +1063,7 @@ def diag(array: Array) -> Array:
     raise TypeError(f"Unsupported framework type: {type(value)}")
 
 
-def all(array: Array, dim: int | tuple[int, ...] | None = None, keepdims: bool = False) -> Array:
+def all(array: Array, dim: int | tuple[int, ...] | None = None, keepdims: bool = False) -> Array:  # noqa: A001
     """
     Test if all array elements along a given dimension evaluate to True.
 

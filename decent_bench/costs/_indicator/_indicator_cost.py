@@ -61,27 +61,19 @@ class IndicatorCost(Cost, ABC):
     @iop.autodecorate_cost_method(Cost.function)
     def function(self, x: Array) -> float:
         """Evaluate function at x."""
-
         return 0 if self.belongs_to_set(x) else np.inf
 
     @iop.autodecorate_cost_method(Cost.gradient)
     def gradient(self, x: Array) -> Array:
-        """Indicator functions are not differentiable."""
-
         raise NotImplementedError("Indicator functions are not differentiable.")
 
     @iop.autodecorate_cost_method(Cost.hessian)
-    def hessian(self, x: Array) -> Array:  # noqa: ARG002
-        """Indicator functions are not differentiable."""
-
+    def hessian(self, x: Array) -> Array:
         raise NotImplementedError("Indicator functions are not differentiable.")
 
     @iop.autodecorate_cost_method(Cost.proximal)
-    def proximal(self, x: Array, rho: float = 1) -> Array:
-        r"""
-        Proximal at x, which coincides with a projection onto the convex set that defines the indicator cost.
-        """
-
+    def proximal(self, x: Array, _: float = 1) -> Array:
+        r"""Proximal at x, which coincides with a projection onto the convex set that defines the indicator cost."""
         return self.projection(x)
 
     @abstractmethod
@@ -90,4 +82,4 @@ class IndicatorCost(Cost, ABC):
 
     @abstractmethod
     def belongs_to_set(self, x: Array) -> bool:
-        """Method checking whether `x` belongs to the convex set that defines the indicator cost."""
+        """Check whether `x` belongs to the convex set that defines the indicator cost."""
