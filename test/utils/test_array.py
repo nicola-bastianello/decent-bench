@@ -85,6 +85,34 @@ def create_array(data: list, framework: str, device: str = "cpu"):
         raise ValueError(f"Unknown framework: {framework}")
 
 
+def create_bool_array(data: list, framework: str, device: str = "cpu") -> Array:
+    """Factory function to create boolean arrays in different frameworks and devices."""
+    if framework == "numpy":
+        return Array(np.array(data, dtype=np.bool_))
+    if framework == "torch":
+        array1 = torch.tensor(data, dtype=torch.bool)
+        if device == "gpu" and TORCH_CUDA_AVAILABLE:
+            array1 = array1.to("cuda")
+        return Array(array1)
+    if framework == "tensorflow":
+        device_str = "/GPU:0" if device == "gpu" and TF_GPU_AVAILABLE else "/CPU:0"
+        with tf.device(device_str):
+            array2: tf.Tensor = tf.constant(data, dtype=tf.bool)  # type: ignore
+            return Array(array2)
+    if framework == "jax":
+        array3 = jnp.array(data, dtype=jnp.bool_)
+        if device == "gpu" and JAX_GPU_AVAILABLE:
+            gpu_devices = [d for d in jax.devices() if d.platform == "gpu"]
+            if gpu_devices:
+                array3 = jax.device_put(array3, device=gpu_devices[0])
+        elif device == "cpu":
+            cpu_devices = [d for d in jax.devices("cpu") if d.platform == "cpu"]
+            if cpu_devices:
+                array3 = jax.device_put(array3, device=cpu_devices[0])
+        return Array(array3)
+    raise ValueError(f"Unknown framework: {framework}")
+
+
 # ============================================================================
 # Tests for Array class
 # ============================================================================
@@ -462,6 +490,27 @@ class TestArrayOperators:
         result = a <= 4
         expected = create_array([[True, True], [True, True]], "numpy")
         assert_arrays_equal(result, expected, framework)
+
+    def test_logical_and(self, framework: str, device: str) -> None:
+        """Test logical AND operators (& and right-side &)."""
+        a = create_bool_array([[True, False], [True, True]], framework, device)
+        b = create_bool_array([[True, True], [False, True]], framework, device)
+
+        result = a & b
+        expected = create_bool_array([[True, False], [False, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+        result = True & a
+        expected = create_bool_array([[True, False], [True, True]], "numpy")
+        assert_arrays_equal(result, expected, framework)
+
+    def test_logical_and_rejects_non_bool(self, framework: str, device: str) -> None:
+        """Test logical AND rejects non-boolean inputs."""
+        a = create_array([[1, 2], [3, 4]], framework, device)
+        b = create_array([[1, 0], [0, 1]], framework, device)
+
+        with pytest.raises(TypeError, match="logical_and supports only bool inputs"):
+            _ = a & b
 
     def test_getitem(self, framework: str, device: str) -> None:
         """Test __getitem__ method."""

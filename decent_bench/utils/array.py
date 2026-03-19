@@ -281,6 +281,14 @@ class Array:  # noqa: PLR0904
         """Element-wise greater-than-or-equal comparison."""
         return iop.greater_equal(self, other)
 
+    def __and__(self, other: Array | SupportedArrayTypes) -> Array:
+        """Element-wise logical AND (only for Array.value of bool type)."""
+        return iop.logical_and(self, other)
+
+    def __rand__(self, other: SupportedArrayTypes) -> Array:
+        """Element-wise logical AND (right-side) (only for Array.value of bool type)."""
+        return iop.logical_and(other, self)
+
     def __getitem__(self, key: ArrayKey) -> Array:
         """
         Get an item or slice from the wrapped tensor.

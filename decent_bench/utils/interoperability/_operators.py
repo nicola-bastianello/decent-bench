@@ -822,3 +822,56 @@ def greater_equal(array1: Array | SupportedArrayTypes, array2: Array | Supported
         return _return_array(jnp.greater_equal(value1, value2))
 
     raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
+
+
+def logical_and(array1: Array | SupportedArrayTypes, array2: Array | SupportedArrayTypes) -> Array:
+    """
+    Element-wise logical AND of two arrays (only for Array.value of bool type).
+
+    Args:
+        array1 (Array | SupportedArrayTypes): First input array.
+        array2 (Array | SupportedArrayTypes): Second input array.
+
+    Returns:
+        Array: Element-wise logical AND result.
+
+    Raises:
+        TypeError: if the framework type of the input arrays is unsupported;
+            or if the input arrays are not of the same framework type;
+            or if the arrays are not of type bool.
+
+    Note:
+        This operator only applies to Arrays with `value` of bool type, to be consistent
+        with the behavior of all supported frameworks. In particular, this is due to the fact that
+        tensorflow only allows AND operations for bool types, although numpy, pytorch and jax also allow for ints.
+
+    """
+    value1 = array1.value if isinstance(array1, Array) else array1
+    value2 = array2.value if isinstance(array2, Array) else array2
+
+    def _is_bool_like(value: object) -> bool:
+        if isinstance(value, (bool, np.bool_)):
+            return True
+        if isinstance(value, np.ndarray | np.generic):
+            return bool(np.issubdtype(np.asarray(value).dtype, np.bool_))
+        if torch and isinstance(value, torch.Tensor):
+            return bool(value.dtype == torch.bool)
+        if tf and isinstance(value, tf.Tensor):
+            return bool(value.dtype == tf.bool)
+        if jnp and isinstance(value, _jnp_types):
+            return bool(np.issubdtype(np.asarray(value).dtype, np.bool_))
+        return False
+
+    if not (_is_bool_like(value1) and _is_bool_like(value2)):
+        raise TypeError("logical_and supports only bool inputs.")
+
+    if isinstance(value1, _np_types):
+        return _return_array(np.logical_and(value1, value2))
+    if torch and isinstance(value1, _torch_types) and isinstance(value2, _torch_types):
+        return _return_array(torch.logical_and(value1, value2))
+    if tf and isinstance(value1, _tf_types) and isinstance(value2, _tf_types):
+        return _return_array(tf.logical_and(value1, value2))
+    if jnp and isinstance(value1, _jnp_types) and isinstance(value2, _jnp_types):
+        return _return_array(jnp.logical_and(value1, value2))
+
+    raise TypeError(f"Unsupported framework type: {type(value1)} and {type(value2)}")
