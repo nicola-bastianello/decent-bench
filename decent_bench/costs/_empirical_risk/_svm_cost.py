@@ -6,7 +6,6 @@ import numpy as np
 import numpy.linalg as la
 from numpy import float64
 from numpy.typing import NDArray
-from scipy import special
 
 import decent_bench.centralized_algorithms as ca
 import decent_bench.utils.interoperability as iop
@@ -32,11 +31,11 @@ class SVMCost(EmpiricalRiskCost):
     Given a data matrix :math:`\mathbf{A} \in \mathbb{R}^{m \times n}` and target vector
     :math:`\mathbf{b} \in \{ -1, 1 \}^{m}`, the cost function is defined as:
 
-    .. math:: f(\mathbf{x}) 
+    .. math:: f(\mathbf{x})
         = \frac{1}{m} \sum_{i = 1}^m h(b_i \langle A_i, \mathbf{x} \rangle) + \frac{w}{2} \| \mathbf{x} \|^2
 
     where :math:`A_i` and :math:`b_i` are the i-th row of :math:`\mathbf{A}` and the i-th element
-    of :math:`\mathbf{b}` respectively, :math:`w \geq 0` is the regularization weight, and 
+    of :math:`\mathbf{b}` respectively, :math:`w \geq 0` is the regularization weight, and
 
     .. math:: h(z) = \begin{cases}
             \frac{1}{2} - z & \text{if} \ z \leq 0 \\
@@ -66,6 +65,7 @@ class SVMCost(EmpiricalRiskCost):
                 - Targets: single dimensional values
             batch_size (EmpiricalRiskBatchSize): Size of mini-batch to use for stochastic methods.
                 If "all", full-batch methods are used.
+            reg_weight: Weight of the l2-norm regularization (if set to 0, the cost is convex but not strongly convex)
 
         Raises:
             ValueError: If input dimensions are incorrect or batch_size is invalid.
@@ -75,6 +75,7 @@ class SVMCost(EmpiricalRiskCost):
             Internally, the values of the targets are converted to :math:`-1` and :math:`1`, as the loss is defined
             for such targets only. During prediction, the targets are mapped back onto the original
             labels transparently.
+
         """
         if len(iop.shape(dataset[0][0])) != 1:
             raise ValueError(f"Dataset features must be vectors, got: {dataset[0][0]}")
@@ -98,8 +99,7 @@ class SVMCost(EmpiricalRiskCost):
             raise ValueError("Dataset must contain exactly two classes")
 
         self._dataset = dataset
-        class_labels = list(class_labels)
-        self._label_mapping = {-1: class_labels[0], 1: class_labels[1]}
+        self._label_mapping = dict(zip((-1, 1), class_labels, strict=True))
         self._batch_size = self.n_samples if batch_size == "all" else batch_size
         # cache data matrices for efficiency when using full dataset
         self.A: NDArray[float64] | None = None
@@ -229,7 +229,8 @@ class SVMCost(EmpiricalRiskCost):
         A, b = self._get_batch_data(indices)  # noqa: N806
         u = np.clip(1 - b * A.dot(x), 0.0, 1.0)
 
-        return -A.T.dot(u * b) / len(self.batch_used) + self._reg_weight * x
+        res: NDArray[float64] = -A.T.dot(u * b) / len(self.batch_used) + self._reg_weight * x
+        return res
 
     def _per_sample_gradients(
         self,

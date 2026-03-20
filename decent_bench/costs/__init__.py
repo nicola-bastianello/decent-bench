@@ -11,7 +11,7 @@ from ._base import (
     SumCost,
     ZeroCost,
 )
-from ._empirical_risk import EmpiricalRiskCost, LinearRegressionCost, LogisticRegressionCost, PyTorchCost
+from ._empirical_risk import EmpiricalRiskCost, LinearRegressionCost, LogisticRegressionCost, PyTorchCost, SVMCost
 from ._indicator import BoxIndicator, IndicatorCost, NonnegativeIndicator
 
 __all__ = [
@@ -28,6 +28,7 @@ __all__ = [
     "NonnegativeIndicator",
     "PyTorchCost",
     "QuadraticCost",
+    "SVMCost",
     "SumCost",
     "ZeroCost",
     "base",

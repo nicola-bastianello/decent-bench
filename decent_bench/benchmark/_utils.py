@@ -5,7 +5,7 @@ from operator import add
 import numpy as np
 
 from decent_bench import centralized_algorithms as ca
-from decent_bench.costs import Cost, LinearRegressionCost, LogisticRegressionCost, PyTorchCost, QuadraticCost
+from decent_bench.costs import Cost, LinearRegressionCost, LogisticRegressionCost, PyTorchCost, QuadraticCost, SVMCost
 from decent_bench.datasets import SyntheticClassificationDatasetHandler, SyntheticRegressionDatasetHandler
 from decent_bench.utils.array import Array
 from decent_bench.utils.types import Dataset, EmpiricalRiskBatchSize, SupportedDevices, SupportedFrameworks
@@ -14,7 +14,7 @@ ran = np.random.default_rng()  # replace with iop tool
 
 
 def create_classification_problem(
-    cost_cls: type[LogisticRegressionCost | PyTorchCost] = LogisticRegressionCost,
+    cost_cls: type[LogisticRegressionCost | SVMCost | PyTorchCost] = LogisticRegressionCost,
     n_agents: int = 100,
     batch_size: EmpiricalRiskBatchSize = "all",
 ) -> tuple[Sequence[Cost], Array | None, Dataset]:
@@ -87,7 +87,7 @@ def create_classification_problem(
             for p in dataset.get_partitions()
         ]
         x_optimal = None
-    elif cost_cls is LogisticRegressionCost:
+    elif cost_cls in {LogisticRegressionCost, SVMCost}:
         costs = [cost_cls(dataset=p, batch_size=batch_size) for p in dataset.get_partitions()]  # type: ignore[call-arg]
         sum_cost = reduce(add, costs)
         x_optimal = ca.accelerated_gradient_descent(sum_cost, x0=None, max_iter=50000, stop_tol=1e-100, max_tol=1e-16)
