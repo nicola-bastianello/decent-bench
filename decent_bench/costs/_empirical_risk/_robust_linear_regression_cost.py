@@ -3,15 +3,13 @@ from __future__ import annotations
 from functools import cached_property
 
 import numpy as np
-import numpy.linalg as la
 from numpy import float64
 from numpy.typing import NDArray
 
-import decent_bench.centralized_algorithms as ca
 import decent_bench.utils.interoperability as iop
 from decent_bench.costs._base._cost import Cost
 from decent_bench.costs._base._sum_cost import SumCost
-from decent_bench.utils.array import Array
+from decent_bench.costs._empirical_risk._empirical_risk_cost import EmpiricalRiskCost
 from decent_bench.utils.types import (
     Dataset,
     EmpiricalRiskBatchSize,
@@ -21,60 +19,43 @@ from decent_bench.utils.types import (
     SupportedFrameworks,
 )
 
-from ._empirical_risk_cost import EmpiricalRiskCost
 
-
-class SVMCost(EmpiricalRiskCost):
+class RobustLinearRegressionCost(EmpiricalRiskCost):
     r"""
-    Cost function to train an Support Vector Machine (SVM).
+    Robust linear regression cost function using the Huber loss.
 
-    Given a data matrix :math:`\mathbf{A} \in \mathbb{R}^{m \times n}` and target vector
-    :math:`\mathbf{b} \in \{ -1, 1 \}^{m}`, the cost function is defined as:
+    Given a data matrix :math:`\mathbf{A} \in \mathbb{R}^{m \times n}`, target vector
+    :math:`\mathbf{b} \in \mathbb{R}^{m}`, and threshold :math:`\delta > 0`, the cost is:
 
-    .. math:: f(\mathbf{x})
-        = \frac{1}{m} \sum_{i = 1}^m h(b_i \langle A_i, \mathbf{x} \rangle) + \frac{w}{2} \| \mathbf{x} \|^2
+    .. math::
+        f(\mathbf{x}) = \frac{1}{m} \sum_{i=1}^m h_\delta(A_i x - b_i)
 
-    where :math:`A_i` and :math:`b_i` are the i-th row of :math:`\mathbf{A}` and the i-th element
-    of :math:`\mathbf{b}` respectively, :math:`w \geq 0` is the regularization weight, and
+    where the Huber loss :math:`h_\delta` is defined per-sample as:
 
-    .. math:: h(z) = \begin{cases}
-            \frac{1}{2} - z & \text{if} \ z \leq 0 \\
-            \frac{1}{2} \left( 1 - z \right)^2 & \text{if} \ 0 < z < 1 \\
-            0 & \text{if} \ z \geq 1
+    .. math::
+        h_\delta(r) =
+        \begin{cases}
+            \frac{1}{2} r^2 & \text{if} \ |r| \leq \delta, \\
+            \delta \left(|r| - \frac{1}{2}\delta \right) & \text{if} \ |r| > \delta.
         \end{cases}
 
-    is the smoothed hinge loss.
-
-    In the stochastic setting, a mini-batch of size :math:`b < m` is used to compute the cost and its derivatives.
-    The cost function then becomes:
-
-    .. math:: f(\mathbf{x}) =
-        = -\frac{1}{b} \sum_{i \in \mathcal{B}} h(b_i \langle A_i, \mathbf{x} \rangle) + \frac{w}{2} \| \mathbf{x} \|^2
-
-    where :math:`\mathcal{B}` is a sampled batch of :math:`b` indices from :math:`\{1, \ldots, m\}`,
-    :math:`\mathbf{A}_B` and :math:`\mathbf{b}_B` are the rows corresponding to the batch :math:`\mathcal{B}`.
+    In the stochastic setting, a mini-batch of size :math:`b < m` replaces the full dataset.
     """
 
-    def __init__(self, dataset: Dataset, batch_size: EmpiricalRiskBatchSize = "all", reg_weight: float = 1.0):
+    def __init__(self, dataset: Dataset, batch_size: EmpiricalRiskBatchSize = "all", delta: float = 1.0):
         """
-        Initialize the cost function.
+        Initialize a RobustLinearRegressionCost instance.
 
         Args:
             dataset (Dataset): Dataset containing features and targets. The expected shapes are:
                 - Features: (n_features,)
                 - Targets: single dimensional values
-            batch_size (EmpiricalRiskBatchSize): Size of mini-batch to use for stochastic methods.
-                If "all", full-batch methods are used.
-            reg_weight (float): Weight of the l2-norm regularization (if set to 0, the cost is convex but not strongly convex)
+            batch_size (EmpiricalRiskBatchSize): Size of mini-batches for stochastic methods, or "all" for full-batch.
+            delta (float): Huber threshold separating the quadratic and linear regions. Must be positive.
 
         Raises:
-            ValueError: If input dimensions are incorrect, batch_size is invalid, or regularization weight is negative.
+            ValueError: If input dimensions are inconsistent, batch_size is invalid, or delta is nonpositive.
             TypeError: If dataset targets are not single dimensional values.
-
-        Note:
-            Internally, the values of the targets are converted to :math:`-1` and :math:`1`, as the loss is defined
-            for such targets only. During prediction, the targets are mapped back onto the original
-            labels transparently.
 
         """
         if len(iop.shape(dataset[0][0])) != 1:
@@ -91,20 +72,16 @@ class SVMCost(EmpiricalRiskCost):
             )
         if isinstance(batch_size, str) and batch_size != "all":
             raise ValueError(f"Invalid batch size string. Supported value is 'all', got {batch_size}.")
-        if reg_weight < 0:
-            raise ValueError(f"`reg_weight` must be nonnegative, got {reg_weight}")
-
-        class_labels = {iop.to_numpy(y).item() for _, y in dataset}
-        if len(class_labels) != 2:
-            raise ValueError("Dataset must contain exactly two classes")
+        if delta <= 0:
+            raise ValueError(f"delta must be positive, got {delta}.")
 
         self._dataset = dataset
-        self._label_mapping = dict(zip((-1, 1), class_labels, strict=True))
+        self._delta = delta
         self._batch_size = self.n_samples if batch_size == "all" else batch_size
-        # cache data matrices for efficiency when using full dataset
+        # Cache data matrices for efficiency when using full dataset
         self.A: NDArray[float64] | None = None
         self.b: NDArray[float64] | None = None
-        self._reg_weight = reg_weight
+        self.ATA: NDArray[float64] | None = None
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -133,34 +110,38 @@ class SVMCost(EmpiricalRiskCost):
     @cached_property
     def m_smooth(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
         r"""
-        The cost function's smoothness constant.
+        The cost function's smoothness constant:
 
-        .. math:: \max_i \|\mathbf{A}_i\|^2 + w
-
-        where :math:`\mathbf{A}_i` is the i-th row of :math:`\mathbf{A}`, and :math:`w` the regularization weight.
+        .. math::
+            \frac{\lambda_{\max}(\mathbf{A}^T \mathbf{A})}{m}
 
         For the general definition, see
         :attr:`Cost.m_smooth <decent_bench.costs.Cost.m_smooth>`.
         """
-        A, _ = self._get_batch_data("all")  # noqa: N806
-        return float(max(pow(la.norm(row), 2) for row in A)) + self._reg_weight
+        _, ATA, _ = self._get_batch_data(indices="all")  # noqa: N806
+        eigs = np.linalg.eigvalsh(ATA)
+        return float(np.max(np.abs(eigs))) / self.n_samples
 
-    @property
-    def m_cvx(self) -> float:
-        """
-        The cost function's convexity constant, :math:`w` (the regularization weight).
+    @cached_property
+    def m_cvx(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
+        r"""
+        The cost function's strong convexity constant.
+
+        The Huber loss is convex but not strongly convex in general: samples whose
+        residual exceeds :math:`\delta` contribute zero curvature, so the global
+        strong convexity constant is :math:`0`.
 
         For the general definition, see
         :attr:`Cost.m_cvx <decent_bench.costs.Cost.m_cvx>`.
         """
-        return self._reg_weight
+        return 0
 
     @iop.autodecorate_cost_method(EmpiricalRiskCost.predict)
     def predict(self, x: NDArray[float64], data: list[NDArray[float64]]) -> NDArray[float64]:
         r"""
         Make predictions at x on the given data.
 
-        The predicted targets are computed as :math:`\langle A_i, \mathbf{x} \rangle \geq 0`.
+        The predicted targets are computed as :math:`\mathbf{Ax}`.
 
         Args:
             x: Point to make predictions at.
@@ -171,8 +152,19 @@ class SVMCost(EmpiricalRiskCost):
 
         """
         pred_data = np.stack(data) if isinstance(data, list) else data
-        sgn = np.where(pred_data.dot(x) < 0, -1, 1).astype(int)
-        return np.array([self._label_mapping[label] for label in sgn])
+        pred: NDArray[float64] = pred_data.dot(x)
+        return pred
+
+    @staticmethod
+    def _huber(residuals: NDArray[float64], delta: float) -> NDArray[float64]:
+        """Per-sample Huber loss values."""
+        abs_r = np.abs(residuals)
+        return np.where(abs_r <= delta, 0.5 * residuals**2, delta * (abs_r - 0.5 * delta))
+
+    @staticmethod
+    def _huber_grad(residuals: NDArray[float64], delta: float) -> NDArray[float64]:
+        """Pseudo-gradient of the Huber loss: clip(r, -delta, delta)."""
+        return np.clip(residuals, -delta, delta)
 
     @iop.autodecorate_cost_method(EmpiricalRiskCost.function)
     def function(self, x: NDArray[float64], indices: EmpiricalRiskIndices = "batch") -> float:
@@ -185,17 +177,16 @@ class SVMCost(EmpiricalRiskCost):
             - "all": use the full dataset.
             - "batch": draw a batch with :attr:`batch_size` samples.
 
+        If no batching is used, this is:
+
+        .. math::
+            \frac{1}{m} \sum_{i=1}^m L_\delta(A_i x - b_i)
+
+        If indices is "batch", a random batch :math:`\mathcal{B}` is drawn with :attr:`batch_size` samples.
         """
-        A, b = self._get_batch_data(indices)  # noqa: N806
-        t = 1 - b * A.dot(x)
-        u = np.clip(t, 0.0, 1.0)
-
-        # t <= 0      -> 0
-        # 0 < t < 1   -> t^2 / 2
-        # t >= 1      -> t - 1/2
-        cost = (u * u) / 2.0 + (t - u) * (t > 1)
-
-        return float(sum(cost) / len(self.batch_used) + self._reg_weight * la.norm(x)**2 / 2)
+        A, _, b = self._get_batch_data(indices)  # noqa: N806
+        residuals = A.dot(x) - b
+        return float(np.sum(self._huber(residuals, self._delta)) / len(self.batch_used))
 
     @iop.autodecorate_cost_method(EmpiricalRiskCost.gradient)
     def gradient(
@@ -217,6 +208,13 @@ class SVMCost(EmpiricalRiskCost):
             - "mean": average the gradients over the samples.
             - None: return the gradients for each sample, index as the first dimension.
 
+        If no batching is used, this is:
+
+        .. math::
+            \frac{1}{m} \mathbf{A}^T \psi_\delta(\mathbf{Ax} - \mathbf{b})
+
+        where :math:`\psi_\delta(r) = \operatorname{clip}(r, -\delta, \delta)`.
+
         Note:
             When reduction is None, the returned array will have an additional leading dimension
             corresponding to the number of samples used. Indexing into this dimension will give the gradient
@@ -226,10 +224,9 @@ class SVMCost(EmpiricalRiskCost):
         if reduction is None:
             return self._per_sample_gradients(x, indices)
 
-        A, b = self._get_batch_data(indices)  # noqa: N806
-        u = np.clip(1 - b * A.dot(x), 0.0, 1.0)
-
-        res: NDArray[float64] = -A.T.dot(u * b) / len(self.batch_used) + self._reg_weight * x
+        A, _, b = self._get_batch_data(indices)  # noqa: N806
+        psi = self._huber_grad(A.dot(x) - b, self._delta)
+        res: NDArray[float64] = A.T.dot(psi) / len(self.batch_used)
         return res
 
     def _per_sample_gradients(
@@ -237,60 +234,45 @@ class SVMCost(EmpiricalRiskCost):
         x: NDArray[float64],
         indices: EmpiricalRiskIndices = "batch",
     ) -> NDArray[float64]:
-        A, b = self._get_batch_data(indices)  # noqa: N806
-        u = np.clip(1 - b * A.dot(x), 0.0, 1.0)
-        res = [A[i, :].reshape(-1, 1) * (-u[i] * b[i]) for i in range(A.shape[0])]
-        return np.asarray(res)
+        A, _, b = self._get_batch_data(indices)  # noqa: N806
+        psi = self._huber_grad(A.dot(x) - b, self._delta)  # shape: (n_samples,)
+        res: NDArray[float64] = psi[:, np.newaxis] * A
+        return res
 
     @iop.autodecorate_cost_method(EmpiricalRiskCost.hessian)
     def hessian(self, x: NDArray[float64], indices: EmpiricalRiskIndices = "batch") -> NDArray[float64]:
         r"""
-        Hessian at x using datapoints at the given indices.
+        Generalized Hessian at x using datapoints at the given indices.
 
-        Supported values for indices are:
-            - int: datapoint to use.
-            - list[int]: datapoints to use.
-            - "all": use the full dataset.
-            - "batch": draw a batch with :attr:`batch_size` samples.
+        The Huber loss is not twice differentiable everywhere; in the linear region
+        (|residual| > delta) the second derivative is zero.  The generalized Hessian is:
+
+        .. math::
+            \frac{1}{m} \mathbf{A}^T \operatorname{diag}(\mathbf{d}) \mathbf{A},
+            \quad d_i = \mathbf{1}[|A_i x - b_i| \leq \delta].
+
+        Supported values for indices are the same as :meth:`function`.
         """
-        A, b = self._get_batch_data(indices)  # noqa: N806
-        t = 1 - b * A.dot(x)
-        d = ((t > 0) & (t < 1)).astype(float)
-        D = np.diag(d)  # noqa: N806
-        res: NDArray[float64] = A.T.dot(D).dot(A) / len(self.batch_used) + self._reg_weight * np.eye(len(x))
+        A, _, b = self._get_batch_data(indices)  # noqa: N806
+        residuals = A.dot(x) - b
+        d = (np.abs(residuals) <= self._delta).astype(float64)
+        AD = d[:, np.newaxis] * A  # scale rows of A by d
+        res: NDArray[float64] = A.T.dot(AD) / len(self.batch_used)
         return res
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.proximal)
-    def proximal(self, x: Array, rho: float) -> Array:
-        """
-        Proximal at x solved using an iterative method.
-
-        The proximal for the cost does not have closed form solution, will use
-        a gradient based approximation method over the entire dataset, over at most 100 iterations.
-
-        See
-        :meth:`Cost.proximal() <decent_bench.costs.Cost.proximal>`
-        for the general proximal definition.
-
-        """
-        prev_batch_size = self.batch_size
-        self._batch_size = self.n_samples  # Use full dataset for proximal
-        approx = ca.proximal_solver(self, x, rho)
-        self._batch_size = prev_batch_size  # Restore previous batch size
-        return approx / self.n_samples
-
-    def _get_batch_data(self, indices: EmpiricalRiskIndices = "batch") -> tuple[NDArray[float64], NDArray[float64]]:
-        """Get data for a batch. Returns A and b for the batch."""
+    def _get_batch_data(
+        self,
+        indices: EmpiricalRiskIndices = "batch",
+    ) -> tuple[NDArray[float64], NDArray[float64], NDArray[float64]]:
+        """Get data for a batch. Returns A, A.T@A and b for the batch."""
         indices = self._sample_batch_indices(indices)
 
         if len(indices) == self.n_samples:
-            # Use full dataset
-            if self.A is None or self.b is None:
+            if self.A is None or self.b is None or self.ATA is None:
                 self.A = np.stack([iop.to_numpy(x) for x, _ in self._dataset])
                 self.b = np.stack([iop.to_numpy(y) for _, y in self._dataset]).squeeze()
-                for k in self._label_mapping:
-                    self.b[np.where(self.b == self._label_mapping[k])] = k
-            return self.A, self.b
+                self.ATA = self.A.T @ self.A
+            return self.A, self.ATA, self.b
 
         A_list, b_list = [], []  # noqa: N806
         for idx in indices:
@@ -299,13 +281,14 @@ class SVMCost(EmpiricalRiskCost):
             b_list.append(iop.to_numpy(y_i))
         A = np.stack(A_list)  # noqa: N806
         b = np.stack(b_list).squeeze()
-        for k in self._label_mapping:
-            b[np.where(b == self._label_mapping[k])] = k
-        return A, b
+        return A, A.T @ A, b
 
     def __add__(self, other: Cost) -> Cost:
         """
         Add another cost function.
+
+        When adding two :class:`RobustLinearRegressionCost` instances with the same
+        ``delta``, the datasets are merged into a single cost for efficiency.
 
         Raises:
             ValueError: if the domain shapes don't match
@@ -313,9 +296,9 @@ class SVMCost(EmpiricalRiskCost):
         """
         if self.shape != other.shape:
             raise ValueError(f"Mismatching domain shapes: {self.shape} vs {other.shape}")
-        if isinstance(other, SVMCost):
+        if isinstance(other, RobustLinearRegressionCost) and self._delta == other._delta:
             if self.batch_size == self.n_samples and other.batch_size == other.n_samples:
-                combined_batch_size = self.n_samples + other.n_samples
+                combined_batch_size: EmpiricalRiskBatchSize = self.n_samples + other.n_samples
             elif self.batch_size == self.n_samples:
                 combined_batch_size = other.batch_size
             elif other.batch_size == other.n_samples:
@@ -323,8 +306,9 @@ class SVMCost(EmpiricalRiskCost):
             else:
                 combined_batch_size = max(self.batch_size, other.batch_size)
 
-            return SVMCost(
-                dataset=self._dataset + other._dataset,
+            return RobustLinearRegressionCost(
+                dataset=self.dataset + other.dataset,
+                delta=self._delta,
                 batch_size=combined_batch_size,
             )
         return SumCost([self, other])
