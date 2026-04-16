@@ -646,7 +646,7 @@ Step 9: Update Documentation
 
 Update the documentation to mention the new framework:
 
-- Add to the list of supported frameworks in ``docs/source/user.rst``
+- Add to the list of supported frameworks in the User Guide pages under ``docs/source/user/``
 - Update any framework-specific examples
 - Add installation instructions if needed
 
@@ -915,6 +915,6 @@ Common Pitfalls
 Further Reading
 ---------------
 
-- :doc:`API Reference <api/decent_bench.utils.interoperability>`
-- :doc:`User Guide <user>` for basic usage
+- :doc:`API Reference <../api/decent_bench.utils.interoperability>`
+- :doc:`User Guide <../user/index>` for basic usage
 - `Type Checking Documentation <https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING>`_

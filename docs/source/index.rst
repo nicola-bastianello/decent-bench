@@ -1,8 +1,3 @@
-.. decent_bench documentation master file, created by
-   sphinx-quickstart on Mon Sep  1 21:05:43 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to decent-bench!
 ========================================
 
@@ -16,9 +11,15 @@ Report any bugs you *may find* to `GitHub <https://github.com/team-decent/decent
 .. toctree::
    :maxdepth: 1
 
-   background
-   user
+   User Guide <user/index>
    API Reference <api/decent_bench>
-   developer
-   advanced
-   author
+   Developer Guide <developer/index>
+
+
+Contributors
+------------
+
+decent-bench is developed by `Elias Ram <https://github.com/elramen/>`_,
+`Simon Granström <https://github.com/Simpag/>`_,
+`Adriana Rodriguez <https://github.com/adrianardv/>`_ under the supervision of
+`Dr. Nicola Bastianello <https://bastianello.me/>`_.
