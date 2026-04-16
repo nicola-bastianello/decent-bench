@@ -4,7 +4,7 @@ Abstract class defining the Backend, and its methods.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from functools import wraps
 import inspect
 from typing import Any, Callable
