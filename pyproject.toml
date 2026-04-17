@@ -54,6 +54,7 @@ sphinx-tools = [
   "sphinx",
   "pydata-sphinx-theme",
   "sphinxcontrib-bibtex",
+  "myst-parser",
 ]
 
 

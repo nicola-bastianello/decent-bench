@@ -28,6 +28,7 @@ extensions = [
     "sphinx.ext.viewcode",  # View source code
     "sphinxcontrib.bibtex",  # For bibliography in API docs
     "class_tagger",  # Tag-based class list directives
+    "myst_parser",  # Allow sphinx to parse .md and .rst
 ]
 
 tagged_list_modules = [
@@ -44,6 +45,8 @@ autodoc_type_aliases = {
     "Network": "decent_bench.networks.Network",
     "NetworkT": "decent_bench.utils.types.NetworkT",
 }
+
+source_suffix = [".rst", ".md"]  # tell sphinx to read markdown also
 
 nitpicky = True
 nitpick_ignore = [
