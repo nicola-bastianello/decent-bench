@@ -57,7 +57,7 @@ nitpick_ignore = [
     ("py:class", "T"),
 ]
 
-suppress_warnings = ["toc.duplicate"]
+suppress_warnings = ["toc.duplicate", "myst.header"]
 
 intersphinx_mapping = {
     "networkx": ("https://networkx.org/documentation/stable/", None),

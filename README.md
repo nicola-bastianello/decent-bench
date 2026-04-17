@@ -6,8 +6,8 @@ https://decent-bench.readthedocs.io/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/decent-bench?label=PyPI%20downloads)](
 https://pypi.org/project/decent-bench/)
 
-decent-bench allows you to benchmark decentralized optimization algorithms under various communication constraints,
-providing realistic algorithm comparisons in a user-friendly and highly configurable setting.
+decent-bench allows you to benchmark decentralized algorithms (both peer-to-peer and federated) under various
+communication constraints, providing realistic algorithm comparisons in a user-friendly and highly configurable setting.
 
 
 ## Installation
