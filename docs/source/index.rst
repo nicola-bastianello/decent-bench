@@ -10,13 +10,13 @@ Want to get involved?
 ---------------------
 
 Contributions are very welcome! Please contact `Dr. Nicola Bastianello <https://bastianello.me/>`_ 
-for discussions or start an open discussion at `GitHub <https://github.com/team-decent/decent-bench/issues>`_.
+for discussions, or start an open discussion at `GitHub <https://github.com/team-decent/decent-bench/issues>`_.
 Report any bugs you may find to `GitHub <https://github.com/team-decent/decent-bench/issues>`_.
-See also the `developer guide <developer/index>`_.
+See also the :doc:`developer guide <developer/index>`.
 
 
-Docs contents
--------------
+Contents
+--------
 
 .. toctree::
    :maxdepth: 1

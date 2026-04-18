@@ -12,26 +12,16 @@ Use :class:`~decent_bench.utils.checkpoint_manager.CheckpointManager` to:
 - resume interrupted runs
 - persist computed metric outputs
 
-.. code-block:: python
-
-    from decent_bench.utils.checkpoint_manager import CheckpointManager
-
-    checkpoint_manager = CheckpointManager(
-        checkpoint_dir="benchmark_results/exp_1",
-        checkpoint_step=500,
-        keep_n_checkpoints=3,
-    )
+.. literalinclude:: ../../../test/user-guide/utils_checkpoint.py
+   :language: python
 
 Network Utilities
 -----------------
 
 Use :mod:`~decent_bench.utils.network_utils` to visualize network topologies during debugging or reporting.
 
-.. code-block:: python
-
-    from decent_bench.utils import network_utils
-
-    network_utils.plot_network(problem.network_structure, layout="circular", with_labels=True)
+.. literalinclude:: ../../../test/user-guide/utils_network_plot.py
+    :language: python
 
 Algorithm Helpers and Interoperability
 --------------------------------------

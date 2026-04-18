@@ -1,5 +1,5 @@
-Customizing the Benchmark
-=========================
+Customizing
+===========
 
 This page describes where to customize each part of a benchmark pipeline.
 
@@ -16,24 +16,8 @@ Common options include:
 - noise
 - packet drops
 
-.. code-block:: python
-
-    import networkx as nx
-
-    from decent_bench import benchmark
-    from decent_bench.costs import LinearRegressionCost
-
-    problem = benchmark.create_regression_problem(
-        LinearRegressionCost,
-        n_agents=50,
-        n_neighbors_per_agent=3,
-        asynchrony=True,
-        compression=True,
-        noise=True,
-        drops=True,
-    )
-
-    problem.network_structure = nx.random_regular_graph(3, 50, seed=0)
+.. literalinclude:: ../../../test/user-guide/customizing_network.py
+   :language: python
 
 Algorithm
 ---------

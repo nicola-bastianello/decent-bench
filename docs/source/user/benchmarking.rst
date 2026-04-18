@@ -1,10 +1,11 @@
 Benchmarking
 ============
 
-This page covers the standard benchmark workflow and the most important settings.
+TODO: This page covers the standard benchmark workflow and the most important settings.
+:doc:`customizing <customizing>` will show how to customize each component of the benchmark
 
-Executing a benchmark
----------------------
+Running a benchmark
+-------------------
 
 A typical run has three phases:
 
@@ -12,26 +13,8 @@ A typical run has three phases:
 2. Compute metrics with :func:`~decent_bench.benchmark.compute_metrics`.
 3. Display or save outputs with :func:`~decent_bench.benchmark.display_metrics`.
 
-.. code-block:: python
-
-    from decent_bench import benchmark
-    from decent_bench.costs import LinearRegressionCost
-    from decent_bench.distributed_algorithms import DGD, ADMM
-
-    if __name__ == "__main__":
-        problem = benchmark.create_regression_problem(LinearRegressionCost)
-
-        result = benchmark.benchmark(
-            algorithms=[
-                DGD(iterations=1000, step_size=0.01),
-                ADMM(iterations=1000, rho=10.0, alpha=0.3),
-            ],
-            benchmark_problem=problem,
-            n_trials=3,
-        )
-
-        metrics = benchmark.compute_metrics(result)
-        benchmark.display_metrics(metrics)
+.. literalinclude:: ../../../test/user-guide/benchmarking_minimal.py
+   :language: python
 
 Customizing benchmark settings
 ------------------------------
@@ -43,32 +26,8 @@ The most commonly tuned settings are:
 - ``table_metrics`` and ``plot_metrics`` for output selection
 - ``confidence_level`` for confidence intervals
 
-.. code-block:: python
-
-    from logging import INFO
-
-    from decent_bench import benchmark
-    from decent_bench.costs import LinearRegressionCost
-    from decent_bench.distributed_algorithms import DGD
-
-    if __name__ == "__main__":
-        result = benchmark.benchmark(
-            algorithms=[DGD(iterations=2000, step_size=0.01)],
-            benchmark_problem=benchmark.create_regression_problem(LinearRegressionCost),
-            n_trials=5,
-            max_processes=1,
-            progress_step=200,
-            show_speed=True,
-            log_level=INFO,
-        )
-
-        metrics = benchmark.compute_metrics(
-            result,
-            confidence_level=0.9,
-            log_level=INFO,
-        )
-
-        benchmark.display_metrics(metrics, save_path="results")
+.. literalinclude:: ../../../test/user-guide/benchmarking_custom_settings.py
+   :language: python
 
 Reproducibility (setting a seed)
 --------------------------------
