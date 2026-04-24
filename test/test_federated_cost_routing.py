@@ -195,8 +195,8 @@ def _run_federated_local_update(
     else:
         raise ValueError(f"Unsupported federated algorithm: {algorithm_name}")
 
-    client = Agent(0, cost)
-    server = Agent(1, ZeroCost(cost.shape))
+    client = Agent(cost)
+    server = Agent(ZeroCost(cost.shape))
     aux_vars = None
     if isinstance(algorithm, Scaffold):
         aux_vars = {"c_i": np.zeros(cost.shape, dtype=float)}
@@ -381,3 +381,4 @@ def test_zero_costs_do_not_need_special_local_update_handling(algorithm_name: st
     np.testing.assert_allclose(updated, np.array([0.0]))
     assert len(cost.gradient_kwargs) == 3
     assert all(kwargs == {} for kwargs in cost.gradient_kwargs)
+

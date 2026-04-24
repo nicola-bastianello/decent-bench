@@ -72,6 +72,8 @@ class Network(ABC):  # noqa: B024
         agent_ids = [agent.id for agent in graph.nodes()]
         if len(agent_ids) != len(set(agent_ids)):
             raise ValueError("Agent IDs must be unique")
+        for idx, agent in enumerate(graph.nodes()):  # assign agent index within the network
+            agent.index = idx
         self._validate_agent_cost_compatibility(graph)
 
         self._graph = graph
@@ -247,13 +249,14 @@ class Network(ABC):  # noqa: B024
 
         The message will be immediately available to the receiver if it is active in the current iteration.
         """
-        sender._n_sent_messages += 1  # noqa: SLF001
+        counter_increment = int(np.prod(iop.shape(msg)) / sender.cost.size)  #TODO replace with msg.size when available
+        sender._n_sent_messages += counter_increment  # noqa: SLF001
         if self._message_drop[sender].should_drop():
             sender._n_sent_messages_dropped += 1  # noqa: SLF001
             return
         msg = self._message_compression[sender].compress(msg)
         msg = self._message_noise[sender].make_noise(msg)
-        receiver._n_received_messages += 1  # noqa: SLF001
+        receiver._n_received_messages += counter_increment  # noqa: SLF001
         receiver._received_messages[sender] = msg  # noqa: SLF001
 
     def _allowed_receivers(self, sender: Agent) -> set[Agent]:
@@ -384,7 +387,7 @@ class P2PNetwork(Network):
         """
         Symmetric, doubly stochastic matrix for consensus weights. Initialized using the Metropolis-Hastings method.
 
-        Use ``weights[i, j]`` or ``weights[i.id, j.id]`` to get the weight between agent i and j.
+        Use ``weights[i, j]`` or ``weights[i.index, j.index]`` to get the weight between agent i and j.
         """
         agents = self.agents()
 
@@ -443,7 +446,7 @@ class P2PNetwork(Network):
         """
         Adjacency matrix of the network.
 
-        Use ``adjacency[i, j]`` or ``adjacency[i.id, j.id]`` to get the adjacency between agent i and j.
+        Use ``adjacency[i, j]`` or ``adjacency[i.index, j.index]`` to get the adjacency between agent i and j.
         """
         agents = self.agents()
         adjacency_matrix = nx.to_numpy_array(
@@ -515,7 +518,6 @@ class FedNetwork(Network):
             # get cost info from one of the clients
             shape, framework, device = clients[0].cost.shape, clients[0].cost.framework, clients[0].cost.device
             server = Agent(
-                max(c.id for c in clients) + 1,
                 ZeroCost(shape, framework, device),
                 AlwaysActive(),
                 min(c.state_snapshot_period for c in clients),

@@ -1,3 +1,4 @@
+import copy
 import pytest
 import networkx as nx
 import numpy as np
@@ -53,7 +54,7 @@ class FixedDrop(DropScheme):
 def test_p2p_network(n_agents: int = 10) -> None:
     net = P2PNetwork(
         graph=nx.complete_graph(n_agents),
-        agents=[Agent(i, L2RegularizerCost((10,))) for i in range(n_agents)],
+        agents=[Agent(L2RegularizerCost((10,))) for i in range(n_agents)],
     )
 
     assert len(net.agents()) == n_agents
@@ -80,7 +81,7 @@ def test_p2p_network(n_agents: int = 10) -> None:
 
 def test_fed_network(n_agents: int = 10) -> None:
     net = FedNetwork(
-        clients=[Agent(i, L2RegularizerCost((10,))) for i in range(n_agents)],
+        clients=[Agent(L2RegularizerCost((10,))) for i in range(n_agents)],
     )
 
     assert len(net.agents()) == n_agents
@@ -100,8 +101,8 @@ def test_fed_network(n_agents: int = 10) -> None:
 
 
 def test_fed_network_accepts_custom_always_active_server() -> None:
-    clients = [Agent(i, L2RegularizerCost((10,))) for i in range(3)]
-    server = Agent(99, L2RegularizerCost((10,)), activation=AlwaysActive())
+    clients = [Agent(L2RegularizerCost((10,))) for i in range(3)]
+    server = Agent(L2RegularizerCost((10,)), activation=AlwaysActive())
 
     net = FedNetwork(clients=clients, server=server)
 
@@ -109,15 +110,15 @@ def test_fed_network_accepts_custom_always_active_server() -> None:
 
 
 def test_fed_network_rejects_custom_non_always_active_server() -> None:
-    clients = [Agent(i, L2RegularizerCost((10,))) for i in range(3)]
-    server = Agent(99, L2RegularizerCost((10,)), activation=UniformActivationRate(0.5))
+    clients = [Agent(L2RegularizerCost((10,))) for i in range(3)]
+    server = Agent(L2RegularizerCost((10,)), activation=UniformActivationRate(0.5))
 
     with pytest.raises(ValueError, match="FedNetwork server must use AlwaysActive activation"):
         FedNetwork(clients=clients, server=server)
 
 
 def test_fed_network_default_server_is_always_active() -> None:
-    clients = [Agent(i, L2RegularizerCost((10,))) for i in range(3)]
+    clients = [Agent(L2RegularizerCost((10,))) for i in range(3)]
 
     net = FedNetwork(clients=clients)
 
@@ -126,8 +127,8 @@ def test_fed_network_default_server_is_always_active() -> None:
 
 def test_p2p_network_rejects_mixed_framework_costs() -> None:
     agents = [
-        Agent(0, L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)),
-        Agent(1, L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH)),
+        Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)),
+        Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH)),
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
@@ -136,8 +137,8 @@ def test_p2p_network_rejects_mixed_framework_costs() -> None:
 
 def test_p2p_network_rejects_mixed_device_costs() -> None:
     agents = [
-        Agent(0, L2RegularizerCost((2,), device=SupportedDevices.CPU)),
-        Agent(1, L2RegularizerCost((2,), device=SupportedDevices.GPU)),
+        Agent(L2RegularizerCost((2,), device=SupportedDevices.CPU)),
+        Agent(L2RegularizerCost((2,), device=SupportedDevices.GPU)),
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
@@ -146,8 +147,8 @@ def test_p2p_network_rejects_mixed_device_costs() -> None:
 
 def test_p2p_network_rejects_mismatched_cost_shapes() -> None:
     agents = [
-        Agent(0, L2RegularizerCost((2,))),
-        Agent(1, L2RegularizerCost((3,))),
+        Agent(L2RegularizerCost((2,))),
+        Agent(L2RegularizerCost((3,))),
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
@@ -156,8 +157,8 @@ def test_p2p_network_rejects_mismatched_cost_shapes() -> None:
 
 def test_fed_network_rejects_mixed_framework_clients() -> None:
     clients = [
-        Agent(0, L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)),
-        Agent(1, L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH)),
+        Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)),
+        Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH)),
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
@@ -165,8 +166,8 @@ def test_fed_network_rejects_mixed_framework_clients() -> None:
 
 
 def test_fed_network_rejects_custom_server_with_mixed_framework() -> None:
-    clients = [Agent(i, L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)) for i in range(2)]
-    server = Agent(99, L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH), activation=AlwaysActive())
+    clients = [Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)) for i in range(2)]
+    server = Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH), activation=AlwaysActive())
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
         FedNetwork(clients=clients, server=server)
@@ -175,7 +176,7 @@ def test_fed_network_rejects_custom_server_with_mixed_framework() -> None:
 def test_initialize_message_schemes_with_dict_all_agents() -> None:
     """Test that per-agent scheme dicts work when all agents are provided."""
     n_agents = 3
-    agents = [Agent(i, L2RegularizerCost((10,))) for i in range(n_agents)]
+    agents = [Agent(L2RegularizerCost((10,))) for i in range(n_agents)]
     net = P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
 
     # create per-agent noise schemes
@@ -191,7 +192,7 @@ def test_initialize_message_schemes_with_dict_all_agents() -> None:
 def test_initialize_message_schemes_with_dict_missing_agent() -> None:
     """Test that missing agent in scheme dict raises ValueError."""
     n_agents = 3
-    agents = [Agent(i, L2RegularizerCost((10,))) for i in range(n_agents)]
+    agents = [Agent(L2RegularizerCost((10,))) for i in range(n_agents)]
     net = P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
 
     # provide schemes for only 2 agents
@@ -204,11 +205,11 @@ def test_initialize_message_schemes_with_dict_missing_agent() -> None:
 def test_initialize_message_schemes_with_dict_extra_keys() -> None:
     """Test that extra keys in scheme dict are ignored."""
     n_agents = 3
-    agents = [Agent(i, L2RegularizerCost((10,))) for i in range(n_agents)]
+    agents = [Agent(L2RegularizerCost((10,))) for i in range(n_agents)]
     net = P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
 
     # Provide schemes with extra agent not in network
-    extra_agent = Agent(999, L2RegularizerCost((10,)))
+    extra_agent = Agent(L2RegularizerCost((10,)))
     schemes_with_extra = {agent: NoNoise() for agent in agents}
     schemes_with_extra[extra_agent] = NoNoise()
 
@@ -224,7 +225,7 @@ def test_initialize_message_schemes_dict_used_in_send() -> None:
     """Test that per-agent schemes in dict are actually used during send operations."""
 
     n_agents = 2
-    agents = [Agent(i, L2RegularizerCost((10,))) for i in range(n_agents)]
+    agents = [Agent(L2RegularizerCost((10,))) for i in range(n_agents)]
     net = P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
 
     # create mock compression schemes
@@ -246,7 +247,7 @@ def test_initialize_message_schemes_dict_used_in_send() -> None:
 
 
 def test_p2p_network_rejects_disconnected_graph() -> None:
-    agents = [Agent(i, L2RegularizerCost((2,))) for i in range(3)]
+    agents = [Agent(L2RegularizerCost((2,))) for i in range(3)]
     graph = nx.Graph()
     graph.add_edges_from([(0, 1)])
     graph.add_node(2)
@@ -256,7 +257,7 @@ def test_p2p_network_rejects_disconnected_graph() -> None:
 
 
 def test_p2p_network_rejects_directed_graph() -> None:
-    agents = [Agent(i, L2RegularizerCost((2,))) for i in range(2)]
+    agents = [Agent(L2RegularizerCost((2,))) for i in range(2)]
     graph = nx.DiGraph()
     graph.add_edge(0, 1)
 
@@ -265,7 +266,7 @@ def test_p2p_network_rejects_directed_graph() -> None:
 
 
 def test_p2p_network_rejects_multigraph() -> None:
-    agents = [Agent(i, L2RegularizerCost((2,))) for i in range(2)]
+    agents = [Agent(L2RegularizerCost((2,))) for i in range(2)]
     graph = nx.MultiGraph()
     graph.add_edge(0, 1)
 
@@ -273,19 +274,21 @@ def test_p2p_network_rejects_multigraph() -> None:
         P2PNetwork(graph=graph, agents=agents)
 
 
-def test_p2p_network_rejects_duplicate_agent_ids() -> None:
-    agent_a = Agent(0, L2RegularizerCost((2,)))
-    agent_b = Agent(0, L2RegularizerCost((2,)))
+def test_p2p_network_collapses_duplicate_agent_ids_before_validation() -> None:
+    agent_a = Agent(L2RegularizerCost((2,)))
+    agent_b = copy.deepcopy(agent_a)
     graph = nx.Graph()
     graph.add_edge(agent_a, agent_b)
 
-    with pytest.raises(ValueError, match="Agent IDs must be unique"):
-        P2PNetwork(graph=graph)
+    # NetworkX collapses equal/hash-identical nodes into one before Network validation runs.
+    assert len(graph.nodes()) == 1
+    net = P2PNetwork(graph=graph)
+    assert len(net.agents()) == 1
 
 
 def test_send_rejects_inactive_receiver() -> None:
-    sender = Agent(0, L2RegularizerCost((2,)))
-    inactive_receiver = Agent(1, L2RegularizerCost((2,)), activation=NeverActive())
+    sender = Agent(L2RegularizerCost((2,)))
+    inactive_receiver = Agent(L2RegularizerCost((2,)), activation=NeverActive())
     net = P2PNetwork(graph=nx.Graph([(sender, inactive_receiver)]))
     msg = iop.zeros(shape=(2,), framework=sender.cost.framework, device=sender.cost.device)
 
@@ -303,8 +306,8 @@ def test_send_rejects_inactive_receiver() -> None:
 def test_step_clears_or_preserves_messages_based_on_buffer_setting(
     buffer_messages: bool, expect_message_after_step: bool
 ) -> None:
-    sender = Agent(0, L2RegularizerCost((2,)))
-    receiver = Agent(1, L2RegularizerCost((2,)))
+    sender = Agent(L2RegularizerCost((2,)))
+    receiver = Agent(L2RegularizerCost((2,)))
     net = P2PNetwork(
         graph=nx.Graph([(sender, receiver)]),
         buffer_messages=buffer_messages,
@@ -320,9 +323,9 @@ def test_step_clears_or_preserves_messages_based_on_buffer_setting(
 
 
 def test_send_applies_drop_compression_and_noise_schemes() -> None:
-    sender = Agent(0, L2RegularizerCost((2,)))
-    dropped_sender = Agent(1, L2RegularizerCost((2,)))
-    receiver = Agent(2, L2RegularizerCost((2,)))
+    sender = Agent(L2RegularizerCost((2,)))
+    dropped_sender = Agent(L2RegularizerCost((2,)))
+    receiver = Agent(L2RegularizerCost((2,)))
     net = P2PNetwork(
         graph=nx.complete_graph([sender, dropped_sender, receiver]),
         message_compression={
@@ -351,3 +354,4 @@ def test_send_applies_drop_compression_and_noise_schemes() -> None:
 
     net.send(sender=dropped_sender, receiver=receiver, msg=msg)
     assert dropped_sender not in receiver.messages
+

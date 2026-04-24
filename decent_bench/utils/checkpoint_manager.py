@@ -11,6 +11,8 @@ from decent_bench.distributed_algorithms import Algorithm
 from decent_bench.networks import Network
 from decent_bench.utils.logger import LOGGER
 
+_AGENT_HASH_DICT_MARKER = "__agent_hash_keyed__"
+
 
 class CheckpointManager:  # noqa: PLR0904
     """
@@ -304,8 +306,12 @@ class CheckpointManager:  # noqa: PLR0904
             "iteration": iteration,
             "rng_state": rng_state,
         }
-        with checkpoint_path.open("wb") as f:
-            pickle.dump(checkpoint_data, f)
+        original_values = _compact_algorithm_agent_dicts_inplace(algorithm)
+        try:
+            with checkpoint_path.open("wb") as f:
+                pickle.dump(checkpoint_data, f)
+        finally:
+            _restore_algorithm_agent_dicts_inplace(algorithm, network, original_values)
 
         # Update progress
         progress = {"last_completed_iteration": iteration}
@@ -352,6 +358,8 @@ class CheckpointManager:  # noqa: PLR0904
         algorithm: Algorithm[Network] = checkpoint_data["algorithm"]
         network: Network = checkpoint_data["network"]
         rng_state = checkpoint_data["rng_state"]
+
+        _restore_algorithm_agent_dicts_inplace(algorithm, network)
 
         LOGGER.debug(f"Loaded checkpoint: alg={alg_idx}, trial={trial}, iter={last_iteration}")
         return algorithm, network, last_iteration, rng_state
@@ -460,6 +468,7 @@ class CheckpointManager:  # noqa: PLR0904
 
         alg: Algorithm[Network] = checkpoint_data["algorithm"]
         network: Network = checkpoint_data["network"]
+        _restore_algorithm_agent_dicts_inplace(alg, network)
         return alg, network
 
     def get_completed_trials(self, alg_idx: int, n_trials: int) -> list[int]:
@@ -642,3 +651,56 @@ class CheckpointManager:  # noqa: PLR0904
                     LOGGER.debug(f"Removed old checkpoint: {file_to_remove}")
                 except FileNotFoundError:
                     LOGGER.debug(f"Checkpoint file already removed by another process: {file_to_remove}")
+
+def _compact_algorithm_agent_dicts_inplace(algorithm: Algorithm[Network]) -> dict[str, dict[Any, Any]]:
+    """Temporarily compact algorithm Agent-keyed dicts for checkpoint serialization."""
+    from decent_bench.agents import Agent  # noqa: PLC0415
+
+    original_values: dict[str, dict[Any, Any]] = {}
+    for attr_name, value in algorithm.__dict__.items():
+        if not isinstance(value, dict) or len(value) == 0:
+            continue
+        if not all(isinstance(k, Agent) for k in value):
+            continue
+        original_values[attr_name] = value
+        compact: dict[int, Any] = {hash(agent): item for agent, item in value.items()}
+        setattr(
+            algorithm,
+            attr_name,
+            {
+                _AGENT_HASH_DICT_MARKER: True,
+                "data": compact,
+            },
+        )
+    return original_values
+
+
+def _restore_algorithm_agent_dicts_inplace(
+    algorithm: Algorithm[Network],
+    network: Network,
+    original_values: dict[str, dict[Any, Any]] | None = None,
+) -> None:
+    """Restore compacted algorithm dicts to Agent-keyed dictionaries."""
+    if original_values is not None:
+        for attr_name, value in original_values.items():
+            setattr(algorithm, attr_name, value)
+        return
+
+    hash_to_agent = {hash(a): a for a in network.graph}
+    for attr_name, value in list(algorithm.__dict__.items()):
+        if not (
+            isinstance(value, dict)
+            and value.get(_AGENT_HASH_DICT_MARKER) is True
+            and "data" in value
+            and isinstance(value["data"], dict)
+        ):
+            continue
+
+        compact = value["data"]
+        decoded: dict[Any, Any] = {}
+        for h, item in compact.items():
+            agent = hash_to_agent.get(h)
+            if agent is None:
+                raise ValueError(f"Cannot restore {attr_name!r}: no agent in network matches hash {h}.")
+            decoded[agent] = item
+        setattr(algorithm, attr_name, decoded)

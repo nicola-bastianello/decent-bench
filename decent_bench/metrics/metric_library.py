@@ -312,6 +312,10 @@ class SentMessages(Metric):
     r"""
     Number of sent messages.
 
+    Sent messages are counted based on their shape: if the message shape equals the sender's ``cost.shape``, the counter
+    increments by 1; if the message stacks :math:`n` arrays with shape equals to ``cost.shape``,
+    the counter increments by :math:`n`.
+
     Table:
         Number of sent messages per agent.
 
@@ -337,6 +341,10 @@ class SentMessages(Metric):
 class ReceivedMessages(Metric):
     r"""
     Number of received messages.
+
+    Received messages are counted based on their shape: if the message shape equals the sender's ``cost.shape``,
+    the counter increments by 1; if the message stacks :math:`n` arrays with shape equals to ``cost.shape``,
+    the counter increments by :math:`n`.
 
     Table:
         Number of received messages per agent.

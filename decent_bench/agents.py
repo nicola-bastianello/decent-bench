@@ -6,6 +6,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, cast
+from uuid import UUID, uuid4
 
 import decent_bench.utils.interoperability as iop
 from decent_bench.costs import Cost, EmpiricalRiskCost
@@ -15,10 +16,13 @@ from decent_bench.utils.array import Array
 
 class Agent:
     """
-    Agent with unique id, local cost function, activation scheme and state snapshot period.
+    Agent with local cost function, activation scheme and state snapshot period.
+
+    At initialization, the agent is assigned a unique id (accessible via ``Agent.id``) which serves as its hash. The
+    agent can also be assigned an index (``Agent.index``). This assignment is performed when initializing a network,
+    and is useful to index arrays by Agent or for user-friendly representation of Agents.
 
     Args:
-        agent_id: agent's identifier
         cost: local cost function; once assigned, it should not be modified
         activation: activation scheme to model synchrony/asynchrony; defaults to synchrony (activate at all iterations)
         state_snapshot_period: how often to record the agent's state when executing an algorithm
@@ -29,9 +33,15 @@ class Agent:
 
     """
 
+    def __new__(cls, *args: Any, _id: UUID | None = None, **kwargs: Any) -> Agent:
+        obj = super().__new__(cls)
+        # Ensure _id exists as early as possible (including during unpickling/deepcopy)
+        obj._id = uuid4() if _id is None else _id
+        obj._index = -1
+        return obj
+
     def __init__(
         self,
-        agent_id: int,
         cost: Cost,
         activation: AgentActivationScheme | None = None,
         state_snapshot_period: int = 1,
@@ -40,7 +50,7 @@ class Agent:
         if state_snapshot_period <= 0:
             raise ValueError("state_snapshot_period must be a positive integer")
 
-        self._id = agent_id
+        self._index = -1
         self._cost = cost
         self._activation = AlwaysActive() if activation is None else activation
         self._state_snapshot_period = state_snapshot_period
@@ -64,9 +74,17 @@ class Agent:
         cost.proximal = self._call_counting_proximal  # type: ignore[method-assign]
 
     @property
-    def id(self) -> int:
+    def id(self) -> UUID:
         """Unique id for the agent."""
         return self._id
+
+    @property
+    def index(self):
+        return self._index
+
+    @index.setter
+    def index(self, value: int):
+        self._index = value
 
     @property
     def cost(self) -> Cost:
@@ -217,12 +235,25 @@ class Agent:
         return res
 
     def __index__(self) -> int:
-        """Enable using agent as index, for example ``W[a1, a2]`` instead of ``W[a1.id, a2.id]``."""
-        return self._id
+        """Enable using agent as index, for example ``W[a1, a2]`` instead of ``W[a1.index, a2.index]``."""
+        return self._index
 
     def __repr__(self) -> str:
         """Human readable representation of the agent."""
-        return f"Agent(id={self._id}, instance_id={id(self)})"
+        return f"Agent(id={self._id if self._index == -1 else self._index}, instance_id={id(self)})"
+
+    def __getnewargs_ex__(self) -> tuple[tuple[()], dict[str, UUID]]:
+        """Preserve Agent._id in pickle/deepcopy by passing it to :meth:`__new__`."""
+        return (), {"_id": self._id}
+
+    def __hash__(self):
+        """Hash of the agent, which coincides with the unique identifier."""
+        return hash(self._id)
+
+    def __eq__(self, other):
+        if not isinstance(other, Agent):
+            return NotImplemented
+        return self._id == other._id
 
     @staticmethod
     @contextlib.contextmanager

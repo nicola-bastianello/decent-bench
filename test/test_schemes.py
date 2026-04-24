@@ -89,7 +89,7 @@ def test_randomly_active(
 
 # test client selection
 def make_clients(n_clients: int) -> list[Agent]:
-    return [Agent(agent_id, L2RegularizerCost((2,))) for agent_id in range(n_clients)]
+    return [Agent(L2RegularizerCost((2,))) for agent_id in range(n_clients)]
 
 
 @pytest.mark.parametrize(
@@ -303,3 +303,4 @@ def test_noise(
     noise_error = float(iop.norm(message - scheme.make_noise(message)))
 
     assert noise_error > 0
+

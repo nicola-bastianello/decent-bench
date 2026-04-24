@@ -38,7 +38,7 @@ def _build_p2p_problem_and_algorithms(
         cost_cls=cost_cls,
         n_agents=4,
     )
-    agents = [Agent(i, cost, activation=UniformActivationRate(0.8)) for i, cost in enumerate(costs)]
+    agents = [Agent(cost, activation=UniformActivationRate(0.8)) for i, cost in enumerate(costs)]
     network = P2PNetwork(
         graph=nx.complete_graph(len(agents)),
         agents=agents,
@@ -70,7 +70,7 @@ def _build_fed_problem_and_algorithms(
         cost_cls=cost_cls,
         n_agents=4,
     )
-    agents = [Agent(i, cost, activation=UniformActivationRate(0.8)) for i, cost in enumerate(costs)]
+    agents = [Agent(cost, activation=UniformActivationRate(0.8)) for i, cost in enumerate(costs)]
     network = FedNetwork(
         clients=agents,
         message_compression=Quantization(8),
@@ -168,3 +168,4 @@ def test_benchmark_rejects_duplicate_algorithm_names() -> None:
             benchmark_problem=problem,
             n_trials=1,
         )
+

@@ -64,7 +64,7 @@ class DropOnCalls(DropScheme):
 
 
 def _make_fed_network(*costs: Cost) -> tuple[FedNetwork, list[Agent]]:
-    clients = [Agent(i, cost) for i, cost in enumerate(costs)]
+    clients = [Agent(cost) for i, cost in enumerate(costs)]
     network = FedNetwork(clients=clients)
     for client in clients:
         client.initialize(x=np.zeros(client.cost.shape, dtype=float))
@@ -141,8 +141,8 @@ def test_aggregation_keeps_server_state_when_no_updates_are_received(
 def test_clients_without_server_broadcast_do_not_participate(
     algorithm_cls: type, kwargs: dict[str, float | int]
 ) -> None:
-    client = Agent(0, TrackingCost(1.0))
-    server = Agent(1, TrackingCost(0.0))
+    client = Agent(TrackingCost(1.0))
+    server = Agent(TrackingCost(0.0))
     network = FedNetwork(
         clients=[client],
         server=server,
@@ -169,8 +169,8 @@ def test_clients_without_server_broadcast_do_not_participate(
     ],
 )
 def test_buffered_stale_client_messages_are_not_aggregated(algorithm_cls: type, kwargs: dict[str, float | int]) -> None:
-    clients = [Agent(0, TrackingCost(1.0)), Agent(1, TrackingCost(3.0))]
-    server = Agent(2, TrackingCost(0.0))
+    clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
+    server = Agent(TrackingCost(0.0))
     network = FedNetwork(
         clients=clients,
         server=server,
@@ -452,8 +452,8 @@ def test_fedopt_server_state_updates_follow_variant_formula(
 def test_fedopt_clients_without_server_broadcast_do_not_participate(
     algorithm_cls: type, kwargs: dict[str, float | int]
 ) -> None:
-    client = Agent(0, TrackingCost(1.0))
-    server = Agent(1, TrackingCost(0.0))
+    client = Agent(TrackingCost(1.0))
+    server = Agent(TrackingCost(0.0))
     network = FedNetwork(
         clients=[client],
         server=server,
@@ -516,8 +516,8 @@ def test_fedopt_clients_without_server_broadcast_do_not_participate(
 def test_fedopt_buffered_stale_client_messages_are_not_aggregated(
     algorithm_cls: type, kwargs: dict[str, float | int], expected_x: float
 ) -> None:
-    clients = [Agent(0, TrackingCost(1.0)), Agent(1, TrackingCost(3.0))]
-    server = Agent(2, TrackingCost(0.0))
+    clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
+    server = Agent(TrackingCost(0.0))
     network = FedNetwork(
         clients=clients,
         server=server,
@@ -558,3 +558,4 @@ def test_fedopt_local_uploads_are_model_deltas(algorithm_cls: type, kwargs: dict
 
     np.testing.assert_allclose(network.server().messages[clients[0]], np.array([-1.0]))
     np.testing.assert_allclose(network.server().messages[clients[1]], np.array([-2.0]))
+

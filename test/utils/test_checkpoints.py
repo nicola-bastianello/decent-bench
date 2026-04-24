@@ -67,7 +67,7 @@ def _build_problem_and_algorithms(
         cost_cls=cost_cls,
         n_agents=4,
     )
-    agents = [Agent(i, cost, activation=UniformActivationRate(0.8)) for i, cost in enumerate(costs)]
+    agents = [Agent(cost, activation=UniformActivationRate(0.8)) for i, cost in enumerate(costs)]
     network = P2PNetwork(
         graph=nx.complete_graph(len(agents)),
         agents=agents,
@@ -862,3 +862,4 @@ def test_back_to_back_benchmarks(
                         iop.to_numpy(resumed_agent._x_history[iteration]),
                         iop.to_numpy(full_agent._x_history[iteration]),
                     )
+
