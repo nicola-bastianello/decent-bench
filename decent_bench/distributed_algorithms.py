@@ -1659,7 +1659,7 @@ class ADMM(P2PAlgorithm):
             raise ValueError("`alpha` must be in (0, 1)")
 
     def initialize(self, network: P2PNetwork) -> None:  # noqa: D102
-        self.rho_i = {i: 1 / (self.rho * len(network.neighbors(i))) for i in network.agents()}
+        self.rho_i = {i: 1 / (self.rho * network.degrees[i]) for i in network.agents()}
         x_from_z = self.x0 is None and self.z0 is not None  # if x0 needs to be created from z0
         self.x0 = alg_helpers.initial_states(self.x0, network)
         self.z0 = alg_helpers.initial_states(self.z0, network)
@@ -1747,7 +1747,7 @@ class ATG(P2PAlgorithm):
             raise ValueError("`delta` must be positive")
 
     def initialize(self, network: P2PNetwork) -> None:  # noqa: D102
-        self.pN = {i: self.rho * len(network.neighbors(i)) for i in network.agents()}
+        self.pN = {i: self.rho * network.degrees[i] for i in network.agents()}
         self.x0 = alg_helpers.initial_states(self.x0, network)
         self.z0 = alg_helpers.initial_states(self.z0, network)
         for i in network.agents():

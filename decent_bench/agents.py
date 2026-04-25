@@ -38,6 +38,7 @@ class Agent:
         # Ensure _id exists as early as possible (including during unpickling/deepcopy)
         obj._id = uuid4() if _id is None else _id
         obj._index = -1
+        obj._network_ref = None
         return obj
 
     def __init__(

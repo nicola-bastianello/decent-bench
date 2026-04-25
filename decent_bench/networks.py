@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import weakref
 from abc import ABC
 from collections.abc import Callable, Collection, Sequence
 from functools import cached_property
@@ -21,12 +23,11 @@ from decent_bench.schemes import (
     NoNoise,
 )
 from decent_bench.utils.array import Array
+from decent_bench.utils.types import SupportedArrayTypes
 
 if TYPE_CHECKING:
-    AnyGraph = nx.Graph[Any]
     AgentGraph = nx.Graph[Agent]
 else:
-    AnyGraph = nx.Graph
     AgentGraph = nx.Graph
 
 
@@ -35,8 +36,7 @@ class Network(ABC):  # noqa: B024
     Base network object defining communication logic shared by all network types.
 
     Args:
-        graph: underlying NetworkX graph defining the network topology.
-            Nodes must be of type :class:`~decent_bench.agents.Agent`.
+        graph: NetworkX graph defining the network topology, with :class:`~decent_bench.agents.Agent` nodes.
         buffer_messages: whether to keep stored messages at the end of each iteration. If ``True``, messages
             persist on the receiver until they are overwritten by a newer message from the same sender to the same
             receiver. If ``False``, messages delivered to a receiver during iteration *k* are dropped when
@@ -51,6 +51,11 @@ class Network(ABC):  # noqa: B024
         message_drop: drop scheme(s) to apply to messages sent by agents in the network. Can be a single
             :class:`~decent_bench.schemes.DropScheme` instance to apply the same scheme to all agents, a dictionary
             mapping each agent to its scheme, or ``None`` to apply no message drop to any agent.
+
+    Raises:
+        ValueError: if the graph is not connected, if it is directed, if it is a multi-graph, if its nodes are
+            not of type :class:`~decent_bench.agents.Agent`, if any two agents have incompatible costs, or if
+            any agent is already assigned to another network.
 
     """
 
@@ -69,11 +74,14 @@ class Network(ABC):  # noqa: B024
             raise ValueError("Directed graphs are not supported; please provide an undirected graph")
         if not nx.is_connected(graph):
             raise ValueError("The graph needs to be connected")
-        agent_ids = [agent.id for agent in graph.nodes()]
-        if len(agent_ids) != len(set(agent_ids)):
-            raise ValueError("Agent IDs must be unique")
+        if any(not isinstance(node, Agent) for node in graph):
+            raise ValueError("The graph nodes must be `Agent` objects")
+        for agent in graph.nodes():
+            if agent._network_ref is not None and agent._network_ref() is not None:  # noqa: SLF001
+                raise ValueError(f"Agent with id {agent.id} is already assigned to another network")
         for idx, agent in enumerate(graph.nodes()):  # assign agent index within the network
             agent.index = idx
+            agent._network_ref = weakref.ref(self)  # noqa: SLF001
         self._validate_agent_cost_compatibility(graph)
 
         self._graph = graph
@@ -86,6 +94,24 @@ class Network(ABC):  # noqa: B024
         self._active_connected_agents_cache: dict[Agent, list[Agent]] = {}
         self._buffer_messages = buffer_messages
         self._iteration = 0  # Current iteration, updated by the algorithm
+
+    @staticmethod
+    def _validate_agent_ids(agents: Sequence[Agent]) -> None:
+        """
+        Validate that all agents have distinct ids.
+
+        This util checks that all agents have distinct ``Agent.id``. Distinct ids are mandatory since agents are
+        hashed by their id (necessary during un/pickling operations). The util is meant to be used in subclasses
+        on raw Agent lists passed by users. NetworkX collapses two agents with the same id, so it is necessary to
+        run this validation before Graph[Agent] is constructed.
+
+        Raises:
+            ValueError: If any two agents have the same id.
+
+        """
+        agent_ids = [agent.id for agent in agents]
+        if len(agent_ids) != len(set(agent_ids)):
+            raise ValueError("Agent IDs must be unique")
 
     @staticmethod
     def _validate_agent_cost_compatibility(graph: AgentGraph) -> None:
@@ -318,19 +344,29 @@ class Network(ABC):  # noqa: B024
         for agent in self._agents_cache:
             agent._received_messages.clear()  # noqa: SLF001
 
+    def __deepcopy__(self, memo: dict[int, object]) -> Network:
+        """Deep-copy network and rebind copied agents to the copied network."""
+        cls = self.__class__
+        copied = cls.__new__(cls)
+        memo[id(self)] = copied
+
+        for attr, value in self.__dict__.items():
+            setattr(copied, attr, copy.deepcopy(value, memo))
+
+        for agent in copied._graph.nodes():  # noqa: SLF001
+            agent._network_ref = weakref.ref(copied)  # noqa: SLF001
+
+        return copied
+
 
 class P2PNetwork(Network):
     """
     Peer-to-peer network architecture where agents communicate directly with each other.
 
     Args:
-        graph: NetworkX graph defining the network topology. Can be a graph with arbitrary node types as long as a list
-            of agents is provided via the `agents` argument; or it can be a graph with
-            :class:`~decent_bench.agents.Agent` nodes, in which case the `agents` argument is optional and will be
-            ignored if provided.
-        agents: list of agents corresponding to the nodes in `graph` if `graph` is not a graph with
-            :class:`~decent_bench.agents.Agent` nodes. The agents in the list are assigned in order to each node of the
-            graph. This argument is ignored if `graph` is a graph with :class:`~decent_bench.agents.Agent` nodes.
+        topology: NetworkX graph defining the network topology.
+        agents: list of agents corresponding to the nodes in ``topology``. The agents in the list are assigned
+            in order to each node of the graph. Agents must have unique ids.
         buffer_messages: whether to keep stored messages at the end of each iteration. If ``True``, messages
             persist on the receiver until they are overwritten by a newer message from the same sender to the same
             receiver. If ``False``, messages delivered to a receiver during iteration *k* are dropped when
@@ -346,40 +382,37 @@ class P2PNetwork(Network):
             :class:`~decent_bench.schemes.DropScheme` instance to apply the same scheme to all agents, a dictionary
             mapping each agent to its scheme, or ``None`` to apply no message drop to any agent.
 
+    Raises:
+        ValueError: if length of ``agents`` doesn't match the number of nodes in ``topology``, or if any two agents
+            have the same ids.
     """
 
     def __init__(
         self,
-        graph: AnyGraph,
-        agents: Sequence[Agent] | None = None,
+        topology: nx.Graph | Array | SupportedArrayTypes,
+        agents: Sequence[Agent],
         *,
         buffer_messages: bool = False,
         message_noise: NoiseScheme | dict[Agent, NoiseScheme] | None = None,
         message_compression: CompressionScheme | dict[Agent, CompressionScheme] | None = None,
         message_drop: DropScheme | dict[Agent, DropScheme] | None = None,
     ) -> None:
-        if all(isinstance(node, Agent) for node in graph.nodes()):  # pass directly to super().__init__
-            super().__init__(
-                graph=graph,
-                buffer_messages=buffer_messages,
-                message_noise=message_noise,
-                message_compression=message_compression,
-                message_drop=message_drop,
-            )
-        else:  # create AgentGraph from graph (which defines the topology) and list of agents
-            if agents is None:
-                raise ValueError("Provide `agents` if `graph` is not a Graph with Agent nodes")
-            if len(agents) != len(graph):
-                raise ValueError(f"Expected {len(graph)} agents but got {len(agents)}")
-            agent_node_map = {node: agents[i] for i, node in enumerate(graph.nodes())}
-            graph = nx.relabel_nodes(graph, agent_node_map)
-            super().__init__(
-                graph=graph,
-                buffer_messages=buffer_messages,
-                message_noise=message_noise,
-                message_compression=message_compression,
-                message_drop=message_drop,
-            )
+        if not isinstance(topology, nx.Graph):  # convert adjacency matrix to nx.Graph
+            topology = nx.Graph(iop.to_numpy(topology))
+        if len(agents) != len(topology):
+            raise ValueError(f"Expected {len(topology)} agents but got {len(agents)}")
+        self._validate_agent_ids(agents)
+
+        # create AgentGraph from topology and list of agents
+        agent_node_map = {node: agents[i] for i, node in enumerate(topology.nodes())}
+        graph = nx.relabel_nodes(topology, agent_node_map)
+        super().__init__(
+            graph=graph,
+            buffer_messages=buffer_messages,
+            message_noise=message_noise,
+            message_compression=message_compression,
+            message_drop=message_drop,
+        )
         self.W: Array | None = None
 
     @property
@@ -524,7 +557,9 @@ class FedNetwork(Network):
             )
         elif not isinstance(server._activation, AlwaysActive):  # noqa: SLF001
             raise ValueError("FedNetwork server must use AlwaysActive activation")
-        graph = nx.star_graph([server, *list(clients)])  # create AgentGraph
+        nodes = [server, *list(clients)]
+        self._validate_agent_ids(nodes)
+        graph = nx.star_graph(nodes)  # create AgentGraph
 
         # specify the server's message schemes if not provided
         if isinstance(message_noise, dict) and server not in message_noise:

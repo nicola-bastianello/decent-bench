@@ -145,6 +145,41 @@ def test_p2p_network_rejects_mixed_device_costs() -> None:
         P2PNetwork(graph=nx.complete_graph(2), agents=agents)
 
 
+def test_p2p_network_rejects_agents_already_assigned_to_live_network() -> None:
+    agents = [Agent(L2RegularizerCost((2,))) for _ in range(2)]
+    _ = P2PNetwork(topology=nx.complete_graph(2), agents=agents)
+
+    with pytest.raises(ValueError, match="already assigned to another network"):
+        P2PNetwork(topology=nx.complete_graph(2), agents=agents)
+
+
+def test_p2p_network_accepts_fresh_agents_in_multiple_networks() -> None:
+    first_agents = [Agent(L2RegularizerCost((2,))) for _ in range(2)]
+    second_agents = [Agent(L2RegularizerCost((2,))) for _ in range(2)]
+
+    first_network = P2PNetwork(topology=nx.complete_graph(2), agents=first_agents)
+    second_network = P2PNetwork(topology=nx.complete_graph(2), agents=second_agents)
+
+    assert len(first_network.agents()) == 2
+    assert len(second_network.agents()) == 2
+    assert all(degree == 1 for degree in first_network.degrees.values())
+    assert all(degree == 1 for degree in second_network.degrees.values())
+
+
+def test_deepcopy_network_rebinds_agent_network_refs() -> None:
+    agents = [Agent(L2RegularizerCost((2,))) for _ in range(2)]
+    network = P2PNetwork(topology=nx.complete_graph(2), agents=agents)
+
+    network_copy = copy.deepcopy(network)
+
+    for agent in network_copy.agents():
+        assert agent._network_ref is not None  # noqa: SLF001
+        assert agent._network_ref() is network_copy  # noqa: SLF001
+
+    with pytest.raises(ValueError, match="already assigned to another network"):
+        P2PNetwork(topology=nx.complete_graph(2), agents=network_copy.agents())
+
+
 def test_p2p_network_rejects_mismatched_cost_shapes() -> None:
     agents = [
         Agent(L2RegularizerCost((2,))),
