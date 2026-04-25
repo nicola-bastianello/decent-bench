@@ -65,12 +65,12 @@ class DropOnCalls(DropScheme):
 
 
 class ScheduledSelection(ClientSelectionScheme):
-    def __init__(self, selected_ids_by_round: dict[int, list[int]]):
-        self._selected_ids_by_round = selected_ids_by_round
+    def __init__(self, selected_indices_by_round: dict[int, list[int]]):
+        self._selected_indices_by_round = selected_indices_by_round
 
     def select(self, clients: Sequence[Agent], iteration: int) -> list[Agent]:
-        selected_ids = set(self._selected_ids_by_round.get(iteration, []))
-        return [client for client in clients if client.id in selected_ids]
+        selected_indices = set(self._selected_indices_by_round.get(iteration, []))
+        return [client for idx, client in enumerate(clients) if idx in selected_indices]
 
 
 def _run_scaffold_local_update(

@@ -52,9 +52,9 @@ def _skip_if_max_processes_exceeds_cpu_count(max_processes: int) -> None:
 @dataclass(eq=False)
 class DummyAlg(DGD):
     def finalize(self, network: P2PNetwork) -> None:
-        for agent in network.agents():
-            if agent.id == 0:
-                print(f"Agent {agent.id} finalizing with x: {agent.x}")  # noqa: T201
+        for idx, agent in enumerate(network.agents()):
+            if idx == 0:
+                print(f"Agent {idx} finalizing with x: {agent.x}")  # noqa: T201
             agent.x = agent.x + 100
 
 
@@ -69,7 +69,7 @@ def _build_problem_and_algorithms(
     )
     agents = [Agent(cost, activation=UniformActivationRate(0.8)) for i, cost in enumerate(costs)]
     network = P2PNetwork(
-        graph=nx.complete_graph(len(agents)),
+        topology=nx.complete_graph(len(agents)),
         agents=agents,
         message_compression=Quantization(8),
         message_noise=GaussianNoise(0.0, 0.01),

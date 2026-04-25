@@ -247,6 +247,17 @@ class Agent:
         """Preserve Agent._id in pickle/deepcopy by passing it to :meth:`__new__`."""
         return (), {"_id": self._id}
 
+    def __getstate__(self) -> dict[str, Any]:
+        """Customize pickle state by dropping the non-pickleable network weakref."""
+        state = self.__dict__.copy()
+        state["_network_ref"] = None
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Restore pickled state with a detached network reference."""
+        self.__dict__.update(state)
+        self._network_ref = None
+
     def __hash__(self):
         """Hash of the agent, which coincides with the unique identifier."""
         return hash(self._id)

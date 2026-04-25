@@ -20,7 +20,7 @@ from decent_bench.utils.pytorch_utils import SimpleLinearModel
 
 def _make_p2p_network(n_agents: int = 3, shape: tuple[int, ...] = (2,)) -> P2PNetwork:
     agents = [Agent(L2RegularizerCost(shape)) for i in range(n_agents)]
-    return P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
+    return P2PNetwork(topology=nx.complete_graph(n_agents), agents=agents)
 
 
 def test_initial_states_none_builds_zero_state_per_agent() -> None:
@@ -193,7 +193,7 @@ def test_pytorch_initialization_extracts_flattened_model_parameters() -> None:
     model = SimpleLinearModel(input_size=2, hidden_sizes=[3], output_size=1)
     cost = PyTorchCost(dataset=dataset, model=model, loss_fn=torch.nn.MSELoss())
     agent = Agent(cost)
-    net = P2PNetwork(graph=nx.complete_graph(1), agents=[agent])
+    net = P2PNetwork(topology=nx.complete_graph(1), agents=[agent])
 
     x0s = pytorch_initialization(net)
 

@@ -372,6 +372,10 @@ class SentMessagesDropped(Metric):
     r"""
     Number of sent messages dropped.
 
+    Dropped messages are counted based on their shape: if the message shape equals the sender's ``cost.shape``,
+    the counter increments by 1; if the message stacks :math:`n` arrays with shape equals to ``cost.shape``,
+    the counter increments by :math:`n`.
+
     Table:
         Number of sent messages dropped per agent.
 

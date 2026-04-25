@@ -278,7 +278,7 @@ class Network(ABC):  # noqa: B024
         counter_increment = int(np.prod(iop.shape(msg)) / sender.cost.size)  #TODO replace with msg.size when available
         sender._n_sent_messages += counter_increment  # noqa: SLF001
         if self._message_drop[sender].should_drop():
-            sender._n_sent_messages_dropped += 1  # noqa: SLF001
+            sender._n_sent_messages_dropped += counter_increment  # noqa: SLF001
             return
         msg = self._message_compression[sender].compress(msg)
         msg = self._message_noise[sender].make_noise(msg)
@@ -357,6 +357,13 @@ class Network(ABC):  # noqa: B024
             agent._network_ref = weakref.ref(copied)  # noqa: SLF001
 
         return copied
+
+    def __setstate__(self, state: dict[str, object]) -> None:
+        """Restore network state and rebind agents to this network after unpickling."""
+        self.__dict__.update(state)
+        for idx, agent in enumerate(self._graph.nodes()):  # noqa: SLF001
+            agent.index = idx
+            agent._network_ref = weakref.ref(self)  # noqa: SLF001
 
 
 class P2PNetwork(Network):

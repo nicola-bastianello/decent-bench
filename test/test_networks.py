@@ -53,7 +53,7 @@ class FixedDrop(DropScheme):
 
 def test_p2p_network(n_agents: int = 10) -> None:
     net = P2PNetwork(
-        graph=nx.complete_graph(n_agents),
+        topology=nx.complete_graph(n_agents),
         agents=[Agent(L2RegularizerCost((10,))) for i in range(n_agents)],
     )
 
@@ -132,7 +132,7 @@ def test_p2p_network_rejects_mixed_framework_costs() -> None:
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
-        P2PNetwork(graph=nx.complete_graph(2), agents=agents)
+        P2PNetwork(topology=nx.complete_graph(2), agents=agents)
 
 
 def test_p2p_network_rejects_mixed_device_costs() -> None:
@@ -142,7 +142,7 @@ def test_p2p_network_rejects_mixed_device_costs() -> None:
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
-        P2PNetwork(graph=nx.complete_graph(2), agents=agents)
+        P2PNetwork(topology=nx.complete_graph(2), agents=agents)
 
 
 def test_p2p_network_rejects_agents_already_assigned_to_live_network() -> None:
@@ -187,7 +187,7 @@ def test_p2p_network_rejects_mismatched_cost_shapes() -> None:
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
-        P2PNetwork(graph=nx.complete_graph(2), agents=agents)
+        P2PNetwork(topology=nx.complete_graph(2), agents=agents)
 
 
 def test_fed_network_rejects_mixed_framework_clients() -> None:
@@ -212,7 +212,7 @@ def test_initialize_message_schemes_with_dict_all_agents() -> None:
     """Test that per-agent scheme dicts work when all agents are provided."""
     n_agents = 3
     agents = [Agent(L2RegularizerCost((10,))) for i in range(n_agents)]
-    net = P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
+    net = P2PNetwork(topology=nx.complete_graph(n_agents), agents=agents)
 
     # create per-agent noise schemes
     noise_schemes = {agent: NoNoise() for agent in agents}
@@ -228,7 +228,7 @@ def test_initialize_message_schemes_with_dict_missing_agent() -> None:
     """Test that missing agent in scheme dict raises ValueError."""
     n_agents = 3
     agents = [Agent(L2RegularizerCost((10,))) for i in range(n_agents)]
-    net = P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
+    net = P2PNetwork(topology=nx.complete_graph(n_agents), agents=agents)
 
     # provide schemes for only 2 agents
     incomplete_schemes = {agents[0]: NoNoise(), agents[1]: NoNoise()}
@@ -241,7 +241,7 @@ def test_initialize_message_schemes_with_dict_extra_keys() -> None:
     """Test that extra keys in scheme dict are ignored."""
     n_agents = 3
     agents = [Agent(L2RegularizerCost((10,))) for i in range(n_agents)]
-    net = P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
+    net = P2PNetwork(topology=nx.complete_graph(n_agents), agents=agents)
 
     # Provide schemes with extra agent not in network
     extra_agent = Agent(L2RegularizerCost((10,)))
@@ -261,7 +261,7 @@ def test_initialize_message_schemes_dict_used_in_send() -> None:
 
     n_agents = 2
     agents = [Agent(L2RegularizerCost((10,))) for i in range(n_agents)]
-    net = P2PNetwork(graph=nx.complete_graph(n_agents), agents=agents)
+    net = P2PNetwork(topology=nx.complete_graph(n_agents), agents=agents)
 
     # create mock compression schemes
     mock_schemes = {agents[0]: MagicMock(spec=CompressionScheme), agents[1]: MagicMock(spec=CompressionScheme)}
@@ -288,7 +288,7 @@ def test_p2p_network_rejects_disconnected_graph() -> None:
     graph.add_node(2)
 
     with pytest.raises(ValueError, match="graph needs to be connected"):
-        P2PNetwork(graph=graph, agents=agents)
+        P2PNetwork(topology=graph, agents=agents)
 
 
 def test_p2p_network_rejects_directed_graph() -> None:
@@ -297,7 +297,7 @@ def test_p2p_network_rejects_directed_graph() -> None:
     graph.add_edge(0, 1)
 
     with pytest.raises(ValueError, match="Directed graphs are not supported"):
-        P2PNetwork(graph=graph, agents=agents)
+        P2PNetwork(topology=graph, agents=agents)
 
 
 def test_p2p_network_rejects_multigraph() -> None:
@@ -306,25 +306,13 @@ def test_p2p_network_rejects_multigraph() -> None:
     graph.add_edge(0, 1)
 
     with pytest.raises(NotImplementedError, match="multi-graphs"):
-        P2PNetwork(graph=graph, agents=agents)
-
-
-def test_p2p_network_collapses_duplicate_agent_ids_before_validation() -> None:
-    agent_a = Agent(L2RegularizerCost((2,)))
-    agent_b = copy.deepcopy(agent_a)
-    graph = nx.Graph()
-    graph.add_edge(agent_a, agent_b)
-
-    # NetworkX collapses equal/hash-identical nodes into one before Network validation runs.
-    assert len(graph.nodes()) == 1
-    net = P2PNetwork(graph=graph)
-    assert len(net.agents()) == 1
+        P2PNetwork(topology=graph, agents=agents)
 
 
 def test_send_rejects_inactive_receiver() -> None:
     sender = Agent(L2RegularizerCost((2,)))
     inactive_receiver = Agent(L2RegularizerCost((2,)), activation=NeverActive())
-    net = P2PNetwork(graph=nx.Graph([(sender, inactive_receiver)]))
+    net = P2PNetwork(topology=nx.path_graph(2), agents=[sender, inactive_receiver])
     msg = iop.zeros(shape=(2,), framework=sender.cost.framework, device=sender.cost.device)
 
     with pytest.raises(ValueError, match="not active or not connected"):
@@ -344,7 +332,8 @@ def test_step_clears_or_preserves_messages_based_on_buffer_setting(
     sender = Agent(L2RegularizerCost((2,)))
     receiver = Agent(L2RegularizerCost((2,)))
     net = P2PNetwork(
-        graph=nx.Graph([(sender, receiver)]),
+        topology=nx.path_graph(2),
+        agents=[sender, receiver],
         buffer_messages=buffer_messages,
     )
     msg = iop.to_array([1.0, -1.0], framework=sender.cost.framework, device=sender.cost.device)
@@ -362,7 +351,8 @@ def test_send_applies_drop_compression_and_noise_schemes() -> None:
     dropped_sender = Agent(L2RegularizerCost((2,)))
     receiver = Agent(L2RegularizerCost((2,)))
     net = P2PNetwork(
-        graph=nx.complete_graph([sender, dropped_sender, receiver]),
+        topology=nx.complete_graph(3),
+        agents=[sender, dropped_sender, receiver],
         message_compression={
             sender: MultiplyCompression(2.0),
             dropped_sender: NoCompression(),
