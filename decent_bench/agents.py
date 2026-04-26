@@ -241,7 +241,7 @@ class Agent:
 
     def __repr__(self) -> str:
         """Human readable representation of the agent."""
-        return f"Agent(id={self._id if self._index == -1 else self._index}, instance_id={id(self)})"
+        return f"Agent {self._id if self._index == -1 else self._index} (instance_id={id(self)})"
 
     def __getnewargs_ex__(self) -> tuple[tuple[()], dict[str, UUID]]:
         """Preserve Agent._id in pickle/deepcopy by passing it to :meth:`__new__`."""
@@ -252,11 +252,6 @@ class Agent:
         state = self.__dict__.copy()
         state["_network_ref"] = None
         return state
-
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        """Restore pickled state with a detached network reference."""
-        self.__dict__.update(state)
-        self._network_ref = None
 
     def __hash__(self):
         """Hash of the agent, which coincides with the unique identifier."""

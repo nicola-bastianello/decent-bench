@@ -6,7 +6,7 @@ import numpy as np
 
 import decent_bench.utils.interoperability as iop
 from decent_bench import centralized_algorithms as ca
-from decent_bench.costs import Cost, LinearRegressionCost, LogisticRegressionCost, PyTorchCost, QuadraticCost
+from decent_bench.costs import Cost, LinearRegressionCost, LogisticRegressionCost, PyTorchCost, QuadraticCost, SumCost
 from decent_bench.datasets import SyntheticClassificationDatasetHandler, SyntheticRegressionDatasetHandler
 from decent_bench.utils import logger
 from decent_bench.utils.array import Array
@@ -103,9 +103,7 @@ def create_classification_problem(
             LogisticRegressionCost(dataset=p, batch_size=batch_size) for p in dataset.get_partitions()
         ]
         LOGGER.info("... done!")
-        sum_cost = reduce(add, classification_costs)
-        if sum_cost.batch_size < sum_cost.n_samples:
-            sum_cost._batch_size = sum_cost.n_samples  # noqa: SLF001
+        sum_cost = SumCost([LogisticRegressionCost(dataset=cost.dataset, batch_size="all") for cost in classification_costs])
         x_optimal = ca.solve(sum_cost, max_iter=SOLVE_MAX_ITER, stop_tol=SOLVE_STOP_TOL, max_tol=SOLVE_MAX_TOL)
         costs = classification_costs
     else:
@@ -190,9 +188,7 @@ def create_regression_problem(
             LinearRegressionCost(dataset=p, batch_size=batch_size) for p in dataset.get_partitions()
         ]
         LOGGER.info("... done!")
-        sum_cost = reduce(add, regression_costs)
-        if sum_cost.batch_size < sum_cost.n_samples:
-            sum_cost._batch_size = sum_cost.n_samples  # noqa: SLF001
+        sum_cost = SumCost([LinearRegressionCost(dataset=cost.dataset, batch_size="all") for cost in regression_costs])
         x_optimal = ca.solve(sum_cost, max_iter=SOLVE_MAX_ITER, stop_tol=SOLVE_STOP_TOL, max_tol=SOLVE_MAX_TOL)
         costs = regression_costs
     else:

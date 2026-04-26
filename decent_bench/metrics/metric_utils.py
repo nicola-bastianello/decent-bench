@@ -12,6 +12,7 @@ from sklearn import metrics as sk_metrics
 
 import decent_bench.utils.interoperability as iop
 from decent_bench.agents import AgentMetricsView
+from decent_bench.costs import EmpiricalRiskCost
 from decent_bench.utils.array import Array
 from decent_bench.utils.types import Dataset
 
@@ -86,9 +87,12 @@ def _regret(agents: Sequence[AgentMetricsView], problem: "BenchmarkProblem", ite
     """
     x_opt = problem.x_optimal
     mean_x = x_mean(tuple(agents), iteration)
-    optimal_cost = sum(a.cost.function(x_opt) for a in agents)  # type: ignore[arg-type, misc]
-    actual_cost = sum(a.cost.function(mean_x) for a in agents)
-    return actual_cost - optimal_cost
+    optimal_cost, actual_cost = 0, 0
+    for a in agents:
+        kwargs = {"indices": "all"} if isinstance(a.cost, EmpiricalRiskCost) else {}
+        optimal_cost += a.cost.function(x_opt, **kwargs)
+        actual_cost += a.cost.function(mean_x, **kwargs)
+    return (actual_cost - optimal_cost) / len(agents)
 
 
 def _gradient_norm(agents: Sequence[AgentMetricsView], iteration: int = -1) -> float:
@@ -100,7 +104,7 @@ def _gradient_norm(agents: Sequence[AgentMetricsView], iteration: int = -1) -> f
     .. include:: snippets/global_gradient_optimality.rst
     """
     mean_x = x_mean(tuple(agents), iteration)
-    grad_avg = sum(iop.to_numpy(a.cost.gradient(mean_x)) for a in agents) / len(agents)
+    grad_avg = sum(iop.to_numpy(a.cost.gradient(mean_x, indices="all") if isinstance(a.cost, EmpiricalRiskCost) else a.cost.gradient(mean_x)) for a in agents) / len(agents)
     return float(la.norm(grad_avg)) ** 2
 
 
