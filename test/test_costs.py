@@ -104,6 +104,21 @@ def test_logistic_regression_validates_labels_and_indices() -> None:
         cost.gradient(np.zeros(2), indices="invalid")
 
 
+def test_logistic_regression_label_mapping_is_deterministic_across_instances() -> None:
+    dataset = [
+        (np.array([1.0, 0.0]), np.array([10.0])),
+        (np.array([0.0, 1.0]), np.array([20.0])),
+        (np.array([2.0, 0.5]), np.array([10.0])),
+        (np.array([0.2, 3.0]), np.array([20.0])),
+    ]
+    cost_1 = LogisticRegressionCost(dataset=dataset, batch_size="all")
+    cost_2 = LogisticRegressionCost(dataset=dataset, batch_size="all")
+    x = np.array([0.3, -0.7])
+
+    assert cost_1._label_mapping == cost_2._label_mapping  # noqa: SLF001
+    assert cost_1.function(x, indices="all") == pytest.approx(cost_2.function(x, indices="all"))
+
+
 def test_quadratic_cost_matches_direct_formula_and_symmetrized_derivatives() -> None:
     A = np.array([[2.0, 1.0], [3.0, 4.0]])
     b = np.array([1.0, -2.0])

@@ -105,24 +105,22 @@ def _gradient_norm(agents: Sequence[AgentMetricsView], iteration: int = -1) -> f
     """
     mean_x = x_mean(tuple(agents), iteration)
     grad_avg = sum(iop.to_numpy(a.cost.gradient(mean_x, indices="all") if isinstance(a.cost, EmpiricalRiskCost) else a.cost.gradient(mean_x)) for a in agents) / len(agents)
-    return float(la.norm(grad_avg)) ** 2
+    return float(la.norm(grad_avg))
 
 
-def _x_error(agent: AgentMetricsView, problem: "BenchmarkProblem", iteration: int = -1) -> float:
+def _x_error(agents: tuple[AgentMetricsView, ...], problem: "BenchmarkProblem", iteration: int = -1) -> float:
     r"""
     Calculate x error at *iteration* (or at the agent's final x if *iteration* is -1).
 
     .. math::
-        \|\mathbf{x}_k - \mathbf{x}^\star\|
+        \|\mathbf{\bar{x}}_k - \mathbf{x}^\star\|
 
-    where :math:`\mathbf{x}_k` is the agent's local x at iteration k,
+    where :math:`\mathbf{\bar{x}}_k` is the mean of the agents' local x at iteration k,
     and :math:`\mathbf{x}^\star` is the optimal x defined in the *problem*.
 
     """
-    agent_iteration = agent.x_history.max() if iteration == -1 else iteration
-    x_at_iteration = iop.to_numpy(agent.x_history[agent_iteration])
-    opt_x = iop.to_numpy(problem.x_optimal)  # type: ignore[arg-type]
-    return float(la.norm(x_at_iteration - opt_x))
+    mean_x = x_mean(tuple(agents), iteration)
+    return float(la.norm(iop.to_numpy(mean_x - problem.x_optimal)))
 
 
 def _accuracy(agents: Sequence[AgentMetricsView], problem: "BenchmarkProblem", iteration: int) -> list[float]:

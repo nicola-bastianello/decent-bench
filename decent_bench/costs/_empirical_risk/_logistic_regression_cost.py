@@ -90,7 +90,8 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         if isinstance(batch_size, str) and batch_size != "all":
             raise ValueError(f"Invalid batch size string. Supported value is 'all', got {batch_size}.")
 
-        class_labels = {iop.to_numpy(y).item() for _, y in dataset}
+        # ensure class_labels is built in a deterministic order
+        class_labels = list(dict.fromkeys(iop.to_numpy(y).item() for _, y in dataset))
         if len(class_labels) != 2:
             raise ValueError("Dataset must contain exactly two classes")
 

@@ -23,6 +23,7 @@ def create_classification_problem(
     device: SupportedDevices = SupportedDevices.CPU,
     n_agents: int = 100,
     batch_size: EmpiricalRiskBatchSize = "all",
+    compute_x_optimal: bool = True,
 ) -> tuple[Sequence[Cost], Array | None, Dataset]:
     """
     Create out-of-the-box classification problems.
@@ -32,6 +33,9 @@ def create_classification_problem(
         device: device to create the problem on (only relevant for PyTorchCost)
         n_agents: number of agents
         batch_size: size of mini-batches for stochastic methods, or "all" for full-batch
+        compute_x_optimal: if the optimal solution should be computed
+            (using :func:`~decent_bench.centralized_algorithms.solve`). It is ignored when PyTorchCost is
+            selected.
 
     Note:
         If cost_cls is :class:`~decent_bench.costs.PyTorchCost`, x_optimal is not computed and set to None.
@@ -103,8 +107,12 @@ def create_classification_problem(
             LogisticRegressionCost(dataset=p, batch_size=batch_size) for p in dataset.get_partitions()
         ]
         LOGGER.info("... done!")
-        sum_cost = SumCost([LogisticRegressionCost(dataset=cost.dataset, batch_size="all") for cost in classification_costs])
-        x_optimal = ca.solve(sum_cost, max_iter=SOLVE_MAX_ITER, stop_tol=SOLVE_STOP_TOL, max_tol=SOLVE_MAX_TOL)
+        if compute_x_optimal:
+            sum_cost = reduce(add, classification_costs)
+            # sum_cost = SumCost([LogisticRegressionCost(dataset=cost.dataset, batch_size="all") for cost in classification_costs])
+            x_optimal = ca.solve(sum_cost, max_iter=SOLVE_MAX_ITER, stop_tol=SOLVE_STOP_TOL, max_tol=SOLVE_MAX_TOL)
+        else:
+            x_optimal = None
         costs = classification_costs
     else:
         raise ValueError(f"Unsupported cost class: {cost_cls}")
@@ -117,6 +125,7 @@ def create_regression_problem(
     device: SupportedDevices = SupportedDevices.CPU,
     n_agents: int = 100,
     batch_size: EmpiricalRiskBatchSize = "all",
+    compute_x_optimal: bool = True,
 ) -> tuple[Sequence[Cost], Array | None, Dataset]:
     """
     Create out-of-the-box regression problems.
@@ -126,6 +135,9 @@ def create_regression_problem(
         device: device to create the problem on (only relevant for PyTorchCost)
         n_agents: number of agents
         batch_size: size of mini-batches for stochastic methods, or "all" for full-batch
+        compute_x_optimal: if the optimal solution should be computed
+            (using :func:`~decent_bench.centralized_algorithms.solve`). It is ignored when PyTorchCost is
+            selected.
 
     Note:
         If cost_cls is :class:`~decent_bench.costs.PyTorchCost`, x_optimal is not computed and set to None.
@@ -188,8 +200,11 @@ def create_regression_problem(
             LinearRegressionCost(dataset=p, batch_size=batch_size) for p in dataset.get_partitions()
         ]
         LOGGER.info("... done!")
-        sum_cost = SumCost([LinearRegressionCost(dataset=cost.dataset, batch_size="all") for cost in regression_costs])
-        x_optimal = ca.solve(sum_cost, max_iter=SOLVE_MAX_ITER, stop_tol=SOLVE_STOP_TOL, max_tol=SOLVE_MAX_TOL)
+        if compute_x_optimal:
+            sum_cost = SumCost([LinearRegressionCost(dataset=cost.dataset, batch_size="all") for cost in regression_costs])
+            x_optimal = ca.solve(sum_cost, max_iter=SOLVE_MAX_ITER, stop_tol=SOLVE_STOP_TOL, max_tol=SOLVE_MAX_TOL)
+        else:
+            x_optimal = None
         costs = regression_costs
     else:
         raise ValueError(f"Unsupported cost class: {cost_cls}")
