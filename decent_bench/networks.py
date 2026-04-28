@@ -280,8 +280,7 @@ class Network(ABC):  # noqa: B024
         if self._message_drop[sender].should_drop():
             sender._n_sent_messages_dropped += counter_increment  # noqa: SLF001
             return
-        msg = self._message_compression[sender].compress(msg)
-        msg = self._message_noise[sender].make_noise(msg)
+        msg = self._message_noise[sender].make_noise(self._message_compression[sender].compress(msg))
         receiver._n_received_messages += counter_increment  # noqa: SLF001
         receiver._received_messages[sender] = msg  # noqa: SLF001
 
@@ -301,7 +300,7 @@ class Network(ABC):  # noqa: B024
         Args:
             sender: sender agent
             receiver: receiver agent, sequence of receiver agents, or ``None`` to broadcast to connected agents.
-            msg: message to send
+            msg: array message to send
 
         Raises:
             ValueError: if ``msg`` is not provided, if agents are not part of the network, or if sender/receiver are not
