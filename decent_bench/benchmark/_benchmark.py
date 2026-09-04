@@ -11,9 +11,10 @@ from multiprocessing import Manager, get_context
 from time import sleep
 from typing import TYPE_CHECKING, Any
 
+from decent_array import interoperability as iop
+from decent_array.types import Frameworks
 from rich.status import Status
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.algorithms import Algorithm
 from decent_bench.benchmark._benchmark_problem import BenchmarkProblem
 from decent_bench.benchmark._benchmark_result import BenchmarkResult
@@ -22,8 +23,6 @@ from decent_bench.metrics._runtime_metric_plotter import RuntimeMetricPlotter
 from decent_bench.networks import Network
 from decent_bench.utils import _logger
 from decent_bench.utils._logger import LOGGER
-from decent_bench.utils.interoperability._rng import _set_seed
-from decent_bench.utils.types import SupportedFrameworks
 
 if TYPE_CHECKING:
     import queue
@@ -187,8 +186,7 @@ def resume_benchmark(  # noqa: PLR0912
     if "rng_seed" in metadata:
         base_seed = metadata["rng_seed"]
         LOGGER.info(f"Setting base RNG seed to {base_seed} from checkpoint metadata")
-        used_frameworks = {agent.cost.framework for agent in problem.network.agents()}
-        iop.set_seed(base_seed, used_frameworks)
+        iop.set_seed(base_seed)
 
     results = _benchmark(
         algorithms=algorithms,
@@ -549,9 +547,8 @@ def _run_trial(  # noqa: PLR0917
     runtime_metrics: "list[RuntimeMetric] | None" = None,
     runtime_plotter_queue: "queue.Queue[Any] | None" = None,
 ) -> tuple[int, Network]:
-    # Set seed for used frameworks
-    used_frameworks = {agent.cost.framework for agent in problem.network.agents()}
-    _set_seed(trial_seed, used_frameworks, set_global_seed=False)
+    # Set seed for the active backend.
+    iop.set_seed(trial_seed)
 
     rng_state: dict[str, Any] | None = None
     if checkpoint_manager is not None:
@@ -591,7 +588,7 @@ def _run_trial(  # noqa: PLR0917
                 iteration=iteration,
                 algorithm=alg,
                 network=network,
-                rng_state=iop.get_rng_state(used_frameworks),
+                rng_state=iop.get_rng_state(),
             )
 
         for metric in trial_runtime_metrics:
@@ -613,7 +610,7 @@ def _run_trial(  # noqa: PLR0917
                     iteration=algorithm.iterations - 1,
                     algorithm=alg,
                     network=network,
-                    rng_state=iop.get_rng_state(used_frameworks),
+                    rng_state=iop.get_rng_state(),
                 )
             # Now that checkpoint is saved, we can _cleanup to clean up memory
             alg._cleanup(network)  # noqa: SLF001
@@ -651,9 +648,9 @@ def _get_runtime_metrics(
 def _should_use_spawn_context(benchmark_problem: BenchmarkProblem) -> bool:
     """Check if any cost function uses a framework that should run with spawn context."""
     unsafe_frameworks = {
-        SupportedFrameworks.PYTORCH,
-        SupportedFrameworks.TENSORFLOW,
-        SupportedFrameworks.JAX,
+        Frameworks.PYTORCH,
+        Frameworks.TENSORFLOW,
+        Frameworks.JAX,
     }
     uses_unsafe_framework = any(
         agent.cost.framework in unsafe_frameworks for agent in benchmark_problem.network.agents()

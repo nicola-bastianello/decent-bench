@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import decent_bench.utils.interoperability as iop
+from decent_array import interoperability as iop
+
 from decent_bench.agents import Agent
 from decent_bench.algorithms.utils import initial_states
 from decent_bench.costs import EmpiricalRiskCost
@@ -127,10 +128,10 @@ class GT_SAGA(P2PAlgorithm):  # noqa: N801
         batch_used = agent.cost.batch_used
 
         # Get grad f_{i,tau_i}(z_{i,tau_i}^k), gradient at stored point for selected sample
-        z_grads = iop.mean(agent.aux_vars["z_grads"][batch_used], dim=0)
+        z_grads = iop.mean(agent.aux_vars["z_grads"][batch_used], axis=0)
 
         # Compute (1/m) sum_{j=1}^m grad f_{i,j}(z_{i,j}^k), average of all gradients in table
-        avg_table_grad = iop.mean(agent.aux_vars["z_grads"], dim=0)
+        avg_table_grad = iop.mean(agent.aux_vars["z_grads"], axis=0)
 
         # Update SAGA gradient estimator
         # g_i^k = grad f_{i,tau_i}(x_i) - grad f_{i,tau_i}(z_{i,tau_i}) + (1/m) sum_{j=1}^m grad f_{i,j}(z_{i,j})

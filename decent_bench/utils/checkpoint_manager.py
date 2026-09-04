@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Any, TypedDict, cast
 
 import zstandard as zstd
+from decent_array import interoperability as iop
 from rich.progress import track
 from rich.status import Status
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.agents import Agent
 from decent_bench.algorithms import Algorithm
 from decent_bench.benchmark import BenchmarkProblem, BenchmarkResult, MetricResult

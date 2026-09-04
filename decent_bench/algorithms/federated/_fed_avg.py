@@ -11,8 +11,9 @@ from decent_bench.utils.types import InitialStates
 from ._fed_algorithm import FedAlgorithm
 
 if TYPE_CHECKING:
+    from decent_array import Array
+
     from decent_bench.agents import Agent
-    from decent_bench.utils.array import Array
 
 
 @tags(Tag.ALGORITHM, Tag.FEDERATED)

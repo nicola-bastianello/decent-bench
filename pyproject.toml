@@ -12,6 +12,7 @@ classifiers = [
 ]
 license = "AGPL-3.0-only"
 dependencies = [
+  "decent-array>=0.2.1",
   "matplotlib>=3.9,<4",
   "networkx>=3.4,<4",
   "numpy>=2.0,<3",

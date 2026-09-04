@@ -4,12 +4,12 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+from decent_array import Array
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.costs._base._cost import Cost
 from decent_bench.utils import solvers as ca
-from decent_bench.utils.array import Array
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
 
 
 class SumCost(Cost):
@@ -44,11 +44,11 @@ class SumCost(Cost):
         return self.costs[0].shape
 
     @property
-    def framework(self) -> SupportedFrameworks:
+    def framework(self) -> Frameworks:
         return self.costs[0].framework
 
     @property
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         return self.costs[0].device
 
     @cached_property
@@ -91,11 +91,11 @@ class SumCost(Cost):
 
     def gradient(self, x: Array, *args: Any, **kwargs: Any) -> Array:  # noqa: ANN401
         """Sum the :meth:`Cost.gradient <decent_bench.costs.Cost.gradient>` of each cost function."""
-        return iop.sum(iop.stack([cf.gradient(x, *args, **kwargs) for cf in self.costs]), dim=0)
+        return iop.sum(iop.stack([cf.gradient(x, *args, **kwargs) for cf in self.costs]), axis=0)
 
     def hessian(self, x: Array, *args: Any, **kwargs: Any) -> Array:  # noqa: ANN401
         """Sum the :meth:`Cost.hessian <decent_bench.costs.Cost.hessian>` of each cost function."""
-        return iop.sum(iop.stack([cf.hessian(x, *args, **kwargs) for cf in self.costs]), dim=0)
+        return iop.sum(iop.stack([cf.hessian(x, *args, **kwargs) for cf in self.costs]), axis=0)
 
     def proximal(self, x: Array, penalty: float, *args: Any, **kwargs: Any) -> Array:  # noqa: ANN401
         """

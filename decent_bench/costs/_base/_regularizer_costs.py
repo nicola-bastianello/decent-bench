@@ -4,12 +4,12 @@ from functools import cached_property
 from typing import Any, overload
 
 import numpy as np
+from decent_array import Array, float64
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.costs._base._cost import Cost
 from decent_bench.utils._tags import Tag, tags
-from decent_bench.utils.array import Array
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
 
 __all__ = [
     "BaseRegularizerCost",
@@ -33,8 +33,8 @@ class BaseRegularizerCost(Cost):
         self,
         shape: tuple[int, ...],
         *,
-        framework: SupportedFrameworks = SupportedFrameworks.NUMPY,
-        device: SupportedDevices = SupportedDevices.CPU,
+        framework: Frameworks = Frameworks.NUMPY,
+        device: Devices = Devices.CPU,
     ):
         if len(shape) == 0:
             raise ValueError("Regularizer shape must be non-empty.")
@@ -51,11 +51,11 @@ class BaseRegularizerCost(Cost):
         return self._shape
 
     @property
-    def framework(self) -> SupportedFrameworks:
+    def framework(self) -> Frameworks:
         return self._framework
 
     @property
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         return self._device
 
     @overload
@@ -162,13 +162,13 @@ class _CompositeRegularizerCost(BaseRegularizerCost):
     def gradient(self, x: Array, **kwargs: Any) -> Array:  # noqa: ANN401
         return iop.sum(
             iop.stack([regularizer.gradient(x, **kwargs) * weight for regularizer, weight in self._terms]),
-            dim=0,
+            axis=0,
         )
 
     def hessian(self, x: Array, **kwargs: Any) -> Array:  # noqa: ANN401
         return iop.sum(
             iop.stack([regularizer.hessian(x, **kwargs) * weight for regularizer, weight in self._terms]),
-            dim=0,
+            axis=0,
         )
 
     def proximal(self, x: Array, penalty: float, **kwargs: Any) -> Array:  # noqa: ANN401
@@ -213,14 +213,14 @@ class L1RegularizerCost(BaseRegularizerCost):
         return 0.0
 
     def function(self, x: Array, **kwargs: Any) -> float:  # noqa: ARG002, ANN401
-        return float(iop.astype(iop.sum(iop.absolute(x)), float))
+        return float(iop.astype(iop.sum(iop.absolute(x)), float64).item())
 
     def gradient(self, x: Array, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         return iop.sign(x)
 
     def hessian(self, x: Array, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         if self._hessian_cache is None:
-            self._hessian_cache = iop.zeros(shape=(self._dim, self._dim), framework=self.framework, device=self.device)
+            self._hessian_cache = iop.zeros(shape=(self._dim, self._dim))
         return self._hessian_cache
 
     def proximal(self, x: Array, penalty: float, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
@@ -247,14 +247,14 @@ class L2RegularizerCost(BaseRegularizerCost):
         return 1.0
 
     def function(self, x: Array, **kwargs: Any) -> float:  # noqa: ARG002, ANN401
-        return float(iop.astype(0.5 * iop.sum(iop.mul(x, x)), float))
+        return float(iop.astype(0.5 * iop.sum(iop.multiply(x, x)), float64).item())
 
     def gradient(self, x: Array, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         return x
 
     def hessian(self, x: Array, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         if self._hessian_cache is None:
-            self._hessian_cache = iop.eye(n=self._dim, framework=self.framework, device=self.device)
+            self._hessian_cache = iop.eye(n=self._dim)
         return self._hessian_cache
 
     def proximal(self, x: Array, penalty: float, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
@@ -275,8 +275,8 @@ class FractionalQuadraticRegularizerCost(BaseRegularizerCost):
         self,
         shape: tuple[int, ...],
         *,
-        framework: SupportedFrameworks = SupportedFrameworks.NUMPY,
-        device: SupportedDevices = SupportedDevices.CPU,
+        framework: Frameworks = Frameworks.NUMPY,
+        device: Devices = Devices.CPU,
         prox_max_iter: int = 100,
         prox_tol: float | None = 1e-10,
     ):
@@ -296,7 +296,7 @@ class FractionalQuadraticRegularizerCost(BaseRegularizerCost):
 
     def function(self, x: Array, **kwargs: Any) -> float:  # noqa: ARG002, ANN401
         x2 = x * x
-        return float(iop.astype(iop.sum(x2 / (1.0 + x2)), float))
+        return float(iop.astype(iop.sum(x2 / (1.0 + x2)), float64).item())
 
     def gradient(self, x: Array, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         x2 = x * x
@@ -319,7 +319,10 @@ class FractionalQuadraticRegularizerCost(BaseRegularizerCost):
             denom = (1.0 + x2) ** 2
             grad = 2.0 * current / denom + (current - x) / penalty
             next_x = current - step_size * grad
-            if self._prox_tol is not None and iop.astype(iop.norm(next_x - current), float) <= self._prox_tol:
+            if (
+                self._prox_tol is not None
+                and float(iop.astype(iop.norm(next_x - current), float64).item()) <= self._prox_tol
+            ):
                 return next_x
             current = next_x
         return current

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-import decent_bench.utils.interoperability as iop
+from decent_array import interoperability as iop
+
 from decent_bench.agents import Agent
 from decent_bench.algorithms.utils import initial_states
 from decent_bench.networks import P2PNetwork
@@ -65,11 +66,7 @@ class LT_ADMM(P2PAlgorithm):  # noqa: N801
         # Initialize agents with auxiliary variables
         for i in network.agents():
             neighbors = network.neighbors(i)
-            z_i = iop.zeros(
-                shape=(len(neighbors), *iop.shape(x0[i])),
-                framework=i.cost.framework,
-                device=i.cost.device,
-            )
+            z_i = iop.zeros(shape=(len(neighbors), *iop.shape(x0[i])))
             neighbor_to_idx: dict[Agent, int] = {}  # Mapping from neighbor to index in z_i array
 
             for idx, j in enumerate(neighbors):
@@ -103,7 +100,7 @@ class LT_ADMM(P2PAlgorithm):  # noqa: N801
         Updates phi_i,k and gradient estimators r_i,h,k.
         """
         agent.aux_vars["phi"] = iop.copy(agent.x)
-        z_sum = iop.sum(agent.aux_vars["z_i"], dim=0)
+        z_sum = iop.sum(agent.aux_vars["z_i"], axis=0)
         # Always use the number of neighbors for the penalty term to ensure proper scaling
         multiplier = self.penalty * len(network.neighbors(agent))
         correction = self.aux_step_size * (multiplier * agent.x - z_sum)

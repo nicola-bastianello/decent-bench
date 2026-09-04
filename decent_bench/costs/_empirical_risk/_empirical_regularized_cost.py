@@ -4,17 +4,16 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+from decent_array import Array
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.costs._base._cost import Cost
 from decent_bench.costs._base._regularizer_costs import BaseRegularizerCost
-from decent_bench.utils.array import Array
 from decent_bench.utils.types import (
     Dataset,
     EmpiricalRiskIndices,
     EmpiricalRiskReduction,
-    SupportedDevices,
-    SupportedFrameworks,
 )
 
 from ._empirical_risk_cost import EmpiricalRiskCost
@@ -45,11 +44,11 @@ class EmpiricalRegularizedCost(EmpiricalRiskCost):
         return self.empirical_cost.shape
 
     @property
-    def framework(self) -> SupportedFrameworks:
+    def framework(self) -> Frameworks:
         return self.empirical_cost.framework
 
     @property
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         return self.empirical_cost.device
 
     @property

@@ -8,8 +8,9 @@ from typing import Any, cast
 
 import networkx as nx
 import numpy as np
+from decent_array import Array
+from decent_array import interoperability as iop
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.agents import Agent
 from decent_bench.costs import ZeroCost
 from decent_bench.schemes import (
@@ -21,7 +22,6 @@ from decent_bench.schemes import (
     NoiseScheme,
     NoNoise,
 )
-from decent_bench.utils.array import Array
 
 
 class Network(ABC):  # noqa: B024
@@ -313,7 +313,7 @@ class Network(ABC):  # noqa: B024
 
         counter_increment = self._message_compression[sender].compressed_msg_size(msg) / sender.cost.size
         sender._n_sent_messages += counter_increment * len(receiver)  # noqa: SLF001
-        framework, device = iop.framework_device_of_array(msg)  # remove after iop refactor
+        framework, device = sender.cost.framework, sender.cost.device
 
         # select confirmed receivers (message is not dropped)
         confirmed_receivers = [r for r in receiver if not self._message_drop[sender].should_drop()]
@@ -424,7 +424,7 @@ class P2PNetwork(Network):
         for i in agents:
             W[i, i] = 1 - sum(W[i])
 
-        self.W = iop.to_array(W, agents[0].cost.framework, agents[0].cost.device)
+        self.W = iop.from_numpy(W)
         return self.W
 
     @weights.setter
@@ -449,7 +449,8 @@ class P2PNetwork(Network):
         if iop.shape(value) != (len(self.agents()), len(self.agents())):
             raise ValueError(f"Weights matrix must be of shape ({len(self.agents())}, {len(self.agents())})")
 
-        framework, device = iop.framework_device_of_array(value)
+        device = iop.device_of(value)
+        framework = self.agents()[0].cost.framework
 
         if framework != self.agents()[0].cost.framework or device != self.agents()[0].cost.device:
             raise ValueError(
@@ -472,11 +473,7 @@ class P2PNetwork(Network):
             nodelist=agents,
             dtype=np.dtype(float),
         )
-        return iop.to_array(
-            adjacency_matrix,
-            agents[0].cost.framework,
-            agents[0].cost.device,
-        )
+        return iop.from_numpy(adjacency_matrix)
 
     def neighbors(self, agent: Agent) -> list[Agent]:
         """Alias for :meth:`~decent_bench.networks.Network.connected_agents`."""

@@ -4,11 +4,11 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+from decent_array import Array
+from decent_array.types import Devices, Frameworks
 
 from decent_bench.costs._base._cost import Cost
 from decent_bench.costs._base._sum_cost import SumCost
-from decent_bench.utils.array import Array
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
 
 
 class ScaledCost(Cost):
@@ -38,11 +38,11 @@ class ScaledCost(Cost):
         return self.cost.shape
 
     @property
-    def framework(self) -> SupportedFrameworks:
+    def framework(self) -> Frameworks:
         return self.cost.framework
 
     @property
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         return self.cost.device
 
     @cached_property

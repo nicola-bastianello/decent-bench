@@ -3,13 +3,14 @@ from __future__ import annotations
 from functools import cached_property
 
 import numpy as np
+from decent_array import Array
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 from numpy import float64
 from numpy.typing import NDArray
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.costs._base._cost import Cost
-from decent_bench.utils.array import Array
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
+from decent_bench.costs._decorators import autodecorate_cost_method
 
 
 class QuadraticCost(Cost):
@@ -45,12 +46,12 @@ class QuadraticCost(Cost):
         return self.b.shape
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.NUMPY
+    def framework(self) -> Frameworks:
+        return Frameworks.NUMPY
 
     @property
-    def device(self) -> SupportedDevices:
-        return SupportedDevices.CPU
+    def device(self) -> Devices:
+        return Devices.CPU
 
     @cached_property
     def m_smooth(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
@@ -94,7 +95,7 @@ class QuadraticCost(Cost):
             return 0
         return np.nan
 
-    @iop.autodecorate_cost_method(Cost.function)
+    @autodecorate_cost_method(Cost.function)
     def function(self, x: NDArray[float64]) -> float:
         r"""
         Evaluate function at x.
@@ -103,7 +104,7 @@ class QuadraticCost(Cost):
         """
         return float(0.5 * x.dot(self.A.dot(x)) + self.b.dot(x) + self.c)
 
-    @iop.autodecorate_cost_method(Cost.gradient)
+    @autodecorate_cost_method(Cost.gradient)
     def gradient(self, x: NDArray[float64]) -> NDArray[float64]:
         r"""
         Gradient at x.
@@ -112,7 +113,7 @@ class QuadraticCost(Cost):
         """
         return self.A_sym @ x + self.b
 
-    @iop.autodecorate_cost_method(Cost.hessian)
+    @autodecorate_cost_method(Cost.hessian)
     def hessian(self, x: NDArray[float64]) -> NDArray[float64]:  # noqa: ARG002
         r"""
         Hessian at x.
@@ -122,7 +123,7 @@ class QuadraticCost(Cost):
         ret: NDArray[float64] = self.A_sym.copy()
         return ret
 
-    @iop.autodecorate_cost_method(Cost.proximal)
+    @autodecorate_cost_method(Cost.proximal)
     def proximal(self, x: NDArray[float64], penalty: float) -> NDArray[float64]:
         r"""
         Proximal at x.
@@ -146,8 +147,8 @@ class QuadraticCost(Cost):
         self._validate_cost_operation(other)
         if isinstance(other, QuadraticCost):
             return QuadraticCost(
-                A=iop.to_array(self.A + other.A, self.framework, self.device),
-                b=iop.to_array(self.b + other.b, self.framework, self.device),
+                A=iop.from_numpy(self.A + other.A),
+                b=iop.from_numpy(self.b + other.b),
                 c=self.c + other.c,
             )
 
@@ -163,8 +164,8 @@ class QuadraticCost(Cost):
         if isinstance(other, QuadraticCost):
             return self.__add__(
                 QuadraticCost(
-                    A=iop.to_array(-other.A, self.framework, self.device),
-                    b=iop.to_array(-other.b, self.framework, self.device),
+                    A=iop.from_numpy(-other.A),
+                    b=iop.from_numpy(-other.b),
                     c=-other.c,
                 )
             )

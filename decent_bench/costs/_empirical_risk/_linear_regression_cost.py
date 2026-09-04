@@ -3,10 +3,12 @@ from __future__ import annotations
 from functools import cached_property
 
 import numpy as np
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 from numpy import float64
 from numpy.typing import NDArray
 
-import decent_bench.utils.interoperability as iop
+from decent_bench.costs._decorators import autodecorate_cost_method
 from decent_bench.costs._empirical_risk._empirical_risk_cost import EmpiricalRiskCost
 from decent_bench.utils._tags import Tag, tags
 from decent_bench.utils.types import (
@@ -14,8 +16,6 @@ from decent_bench.utils.types import (
     EmpiricalRiskBatchSize,
     EmpiricalRiskIndices,
     EmpiricalRiskReduction,
-    SupportedDevices,
-    SupportedFrameworks,
 )
 
 
@@ -89,12 +89,12 @@ class LinearRegressionCost(EmpiricalRiskCost):
         return iop.shape(self._dataset[0][0])
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.NUMPY
+    def framework(self) -> Frameworks:
+        return Frameworks.NUMPY
 
     @property
-    def device(self) -> SupportedDevices:
-        return SupportedDevices.CPU
+    def device(self) -> Devices:
+        return Devices.CPU
 
     @property
     def n_samples(self) -> int:
@@ -151,7 +151,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
             return 0
         return np.nan
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.predict)
+    @autodecorate_cost_method(EmpiricalRiskCost.predict)
     def predict(self, x: NDArray[float64], data: list[NDArray[float64]]) -> NDArray[float64]:
         r"""
         Make predictions at x on the given data.
@@ -170,7 +170,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         pred: NDArray[float64] = pred_data.dot(x)
         return pred
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.function)
+    @autodecorate_cost_method(EmpiricalRiskCost.function)
     def function(self, x: NDArray[float64], indices: EmpiricalRiskIndices = "batch") -> float:
         r"""
         Evaluate function at x using datapoints at the given indices.
@@ -197,7 +197,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         residual = A.dot(x) - b
         return float(0.5 * residual.dot(residual) / len(self.batch_used))
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.gradient)
+    @autodecorate_cost_method(EmpiricalRiskCost.gradient)
     def gradient(
         self,
         x: NDArray[float64],
@@ -253,7 +253,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         res: NDArray[float64] = residuals[:, np.newaxis] * A
         return res
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.hessian)
+    @autodecorate_cost_method(EmpiricalRiskCost.hessian)
     def hessian(self, x: NDArray[float64], indices: EmpiricalRiskIndices = "batch") -> NDArray[float64]:  # noqa: ARG002
         r"""
         Hessian at x using datapoints at the given indices.
@@ -280,7 +280,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         res: NDArray[float64] = ATA / len(self.batch_used)
         return res
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.proximal)
+    @autodecorate_cost_method(EmpiricalRiskCost.proximal)
     def proximal(self, x: NDArray[float64], penalty: float) -> NDArray[float64]:
         r"""
         Proximal at x using the full dataset.

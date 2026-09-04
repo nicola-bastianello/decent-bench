@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import decent_bench.utils.interoperability as iop
+from decent_array import interoperability as iop
+
 from decent_bench.agents import Agent
 from decent_bench.algorithms.utils import initial_states
 from decent_bench.costs import EmpiricalRiskCost

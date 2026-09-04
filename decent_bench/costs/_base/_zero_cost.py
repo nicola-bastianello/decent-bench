@@ -3,10 +3,11 @@ from __future__ import annotations
 from functools import cached_property
 from typing import Any
 
-import decent_bench.utils.interoperability as iop
+from decent_array import Array
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
+
 from decent_bench.costs._base._cost import Cost
-from decent_bench.utils.array import Array
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
 
 
 class ZeroCost(Cost):
@@ -19,8 +20,8 @@ class ZeroCost(Cost):
     def __init__(
         self,
         shape: tuple[int, ...],
-        framework: SupportedFrameworks = SupportedFrameworks.NUMPY,
-        device: SupportedDevices = SupportedDevices.CPU,
+        framework: Frameworks = Frameworks.NUMPY,
+        device: Devices = Devices.CPU,
     ):
         if not all(isinstance(d, int) and d >= 0 for d in shape):
             raise ValueError("shape must be a tuple of non-negative integers")
@@ -34,11 +35,11 @@ class ZeroCost(Cost):
         return self._shape
 
     @property
-    def framework(self) -> SupportedFrameworks:
+    def framework(self) -> Frameworks:
         return self._framework
 
     @property
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         return self._device
 
     @cached_property
@@ -59,11 +60,11 @@ class ZeroCost(Cost):
 
     def gradient(self, x: Array, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         self._check_shape(x)
-        return iop.zeros(shape=self.shape, framework=self.framework, device=self.device)
+        return iop.zeros(shape=self.shape)
 
     def hessian(self, x: Array, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         self._check_shape(x)
-        return iop.zeros(shape=self.shape + self.shape, framework=self.framework, device=self.device)
+        return iop.zeros(shape=self.shape + self.shape)
 
     def proximal(self, x: Array, penalty: float, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         """

@@ -3,8 +3,8 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
+from decent_array import interoperability as iop
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.costs import Cost, EmpiricalRiskCost
 from decent_bench.metrics import utils
 from decent_bench.metrics._metric import Metric

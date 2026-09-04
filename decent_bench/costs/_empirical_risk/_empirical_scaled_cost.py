@@ -4,14 +4,13 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+from decent_array import Array
+from decent_array.types import Devices, Frameworks
 
-from decent_bench.utils.array import Array
 from decent_bench.utils.types import (
     Dataset,
     EmpiricalRiskIndices,
     EmpiricalRiskReduction,
-    SupportedDevices,
-    SupportedFrameworks,
 )
 
 from ._empirical_risk_cost import EmpiricalRiskCost
@@ -44,11 +43,11 @@ class _EmpiricalScaledCost(EmpiricalRiskCost):
         return self.cost.shape
 
     @property
-    def framework(self) -> SupportedFrameworks:
+    def framework(self) -> Frameworks:
         return self.cost.framework
 
     @property
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         return self.cost.device
 
     @property

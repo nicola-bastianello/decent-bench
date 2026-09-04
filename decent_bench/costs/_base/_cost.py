@@ -6,8 +6,8 @@ from math import prod
 from numbers import Real
 from typing import Any
 
-from decent_bench.utils.array import Array
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
+from decent_array import Array
+from decent_array.types import Devices, Frameworks
 
 
 class Cost(ABC):
@@ -54,7 +54,7 @@ class Cost(ABC):
 
     @property
     @abstractmethod
-    def framework(self) -> SupportedFrameworks:
+    def framework(self) -> Frameworks:
         """
         The framework used by this cost function.
 
@@ -65,7 +65,7 @@ class Cost(ABC):
 
     @property
     @abstractmethod
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         """
         The device used by this cost function.
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-import decent_bench.utils.interoperability as iop
+from decent_array import interoperability as iop
+
 from decent_bench.algorithms.utils import initial_states
 from decent_bench.networks import P2PNetwork
 from decent_bench.utils._tags import Tag, tags
@@ -61,7 +62,7 @@ class WangElia(P2PAlgorithm):
             i.initialize(x=self.x0[i], aux_vars={"z": iop.zeros_like(self.x0[i]), "x_old": self.x0[i]})
 
         W = network.weights  # noqa: N806
-        K = 0.5 * (iop.eye_like(W) - W)  # noqa: N806
+        K = 0.5 * (iop.eye(iop.shape(W)[0]) - W)  # noqa: N806
 
         self.K = K
 

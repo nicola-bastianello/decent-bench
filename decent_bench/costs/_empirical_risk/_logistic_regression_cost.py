@@ -4,21 +4,21 @@ from functools import cached_property
 
 import numpy as np
 import numpy.linalg as la
+from decent_array import Array
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 from numpy import float64
 from numpy.typing import NDArray
 from scipy import special
 
-import decent_bench.utils.interoperability as iop
 import decent_bench.utils.solvers as ca
+from decent_bench.costs._decorators import autodecorate_cost_method
 from decent_bench.utils._tags import Tag, tags
-from decent_bench.utils.array import Array
 from decent_bench.utils.types import (
     Dataset,
     EmpiricalRiskBatchSize,
     EmpiricalRiskIndices,
     EmpiricalRiskReduction,
-    SupportedDevices,
-    SupportedFrameworks,
 )
 
 from ._empirical_risk_cost import EmpiricalRiskCost
@@ -105,12 +105,12 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         return iop.shape(self._dataset[0][0])
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.NUMPY
+    def framework(self) -> Frameworks:
+        return Frameworks.NUMPY
 
     @property
-    def device(self) -> SupportedDevices:
-        return SupportedDevices.CPU
+    def device(self) -> Devices:
+        return Devices.CPU
 
     @property
     def n_samples(self) -> int:
@@ -150,7 +150,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         """
         return 0
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.predict)
+    @autodecorate_cost_method(EmpiricalRiskCost.predict)
     def predict(self, x: NDArray[float64], data: list[NDArray[float64]]) -> NDArray[float64]:
         r"""
         Make predictions at x on the given data.
@@ -171,7 +171,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         sig = special.expit(logits)
         return np.array([self._label_mapping[label] for label in (sig >= 0.5).astype(int)])
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.function)
+    @autodecorate_cost_method(EmpiricalRiskCost.function)
     def function(self, x: NDArray[float64], indices: EmpiricalRiskIndices = "batch") -> float:
         r"""
         Evaluate function at x using datapoints at the given indices.
@@ -206,7 +206,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         cost = b.dot(neg_log_sig) + (1 - b).dot(Ax + neg_log_sig)
         return float(cost) / len(self.batch_used)
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.gradient)
+    @autodecorate_cost_method(EmpiricalRiskCost.gradient)
     def gradient(
         self,
         x: NDArray[float64],
@@ -264,7 +264,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         res = [A[i, :].reshape(-1) * (sig[i] - b[i]) for i in range(A.shape[0])]
         return np.asarray(res)
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.hessian)
+    @autodecorate_cost_method(EmpiricalRiskCost.hessian)
     def hessian(self, x: NDArray[float64], indices: EmpiricalRiskIndices = "batch") -> NDArray[float64]:
         r"""
         Hessian at x using datapoints at the given indices.
@@ -296,7 +296,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         res: NDArray[float64] = A.T.dot(D).dot(A) / len(self.batch_used)
         return res
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.proximal)
+    @autodecorate_cost_method(EmpiricalRiskCost.proximal)
     def proximal(self, x: Array, penalty: float) -> Array:
         """
         Proximal at x solved using an iterative method.

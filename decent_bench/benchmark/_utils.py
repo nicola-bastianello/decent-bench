@@ -3,8 +3,10 @@ from functools import reduce
 from operator import add
 
 import numpy as np
+from decent_array import Array
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 
-import decent_bench.utils.interoperability as iop
 from decent_bench.costs import Cost, LinearRegressionCost, LogisticRegressionCost, PyTorchCost, QuadraticCost
 from decent_bench.datasets import (
     SyntheticClassificationDatasetHandler,
@@ -14,8 +16,7 @@ from decent_bench.datasets.utils import split_iid
 from decent_bench.utils import _logger
 from decent_bench.utils import solvers as ca
 from decent_bench.utils._logger import LOGGER
-from decent_bench.utils.array import Array
-from decent_bench.utils.types import Dataset, EmpiricalRiskBatchSize, SupportedDevices, SupportedFrameworks
+from decent_bench.utils.types import Dataset, EmpiricalRiskBatchSize
 
 SOLVE_MAX_ITER = 10000
 SOLVE_STOP_TOL = 1e-20
@@ -25,7 +26,7 @@ SOLVE_MAX_TOL = 1e-16
 def create_classification_problem(
     cost_cls: type[LogisticRegressionCost | PyTorchCost] = LogisticRegressionCost,
     *,
-    device: SupportedDevices = SupportedDevices.CPU,
+    device: Devices = Devices.CPU,
     n_agents: int = 100,
     batch_size: EmpiricalRiskBatchSize = "all",
     compute_x_optimal: bool = True,
@@ -60,7 +61,7 @@ def create_classification_problem(
         n_targets=2,
         n_samples=n_agents * 10,
         n_features=3,
-        framework=SupportedFrameworks.PYTORCH if cost_cls is PyTorchCost else SupportedFrameworks.NUMPY,
+        framework=Frameworks.PYTORCH if cost_cls is PyTorchCost else Frameworks.NUMPY,
         device=device,
         feature_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
         squeeze_targets=cost_cls is PyTorchCost,  # PyTorchCost expects squeezed targets for CrossEntropyLoss
@@ -69,7 +70,7 @@ def create_classification_problem(
         n_targets=2,
         n_samples=100,
         n_features=3,
-        framework=SupportedFrameworks.PYTORCH if cost_cls is PyTorchCost else SupportedFrameworks.NUMPY,
+        framework=Frameworks.PYTORCH if cost_cls is PyTorchCost else Frameworks.NUMPY,
         device=device,
         feature_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
         squeeze_targets=cost_cls is PyTorchCost,
@@ -132,7 +133,7 @@ def create_classification_problem(
 def create_regression_problem(
     cost_cls: type[LinearRegressionCost | PyTorchCost] = LinearRegressionCost,
     *,
-    device: SupportedDevices = SupportedDevices.CPU,
+    device: Devices = Devices.CPU,
     n_agents: int = 100,
     batch_size: EmpiricalRiskBatchSize = "all",
     compute_x_optimal: bool = True,
@@ -165,7 +166,7 @@ def create_regression_problem(
         n_targets=1,
         n_samples=n_agents * 10,
         n_features=1,
-        framework=SupportedFrameworks.PYTORCH if cost_cls is PyTorchCost else SupportedFrameworks.NUMPY,
+        framework=Frameworks.PYTORCH if cost_cls is PyTorchCost else Frameworks.NUMPY,
         device=device,
         feature_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
         target_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
@@ -174,7 +175,7 @@ def create_regression_problem(
         n_targets=1,
         n_samples=100,
         n_features=1,
-        framework=SupportedFrameworks.PYTORCH if cost_cls is PyTorchCost else SupportedFrameworks.NUMPY,
+        framework=Frameworks.PYTORCH if cost_cls is PyTorchCost else Frameworks.NUMPY,
         device=device,
         feature_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
         target_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
@@ -242,9 +243,9 @@ def create_quadratic_problem(
     LOGGER.info("Creating cost functions ...")
     A, b = [], []  # noqa: N806
     for _ in range(n_agents):
-        A_i = iop.uniform(shape=(size, size), framework=SupportedFrameworks.NUMPY, device=SupportedDevices.CPU)  # noqa: N806
-        A.append((A_i + iop.transpose(A_i)) / 2 + size * iop.eye_like(A_i))
-        b.append(iop.normal(shape=(size,), std=10, framework=SupportedFrameworks.NUMPY, device=SupportedDevices.CPU))
+        A_i = iop.uniform(shape=(size, size))  # noqa: N806
+        A.append((A_i + iop.transpose(A_i)) / 2 + size * iop.eye(iop.shape(A_i)[0]))
+        b.append(iop.normal(shape=(size,), std=10))
 
     costs = [QuadraticCost(A[i], b[i]) for i in range(n_agents)]
     LOGGER.info("... done!")

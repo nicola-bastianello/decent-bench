@@ -3,8 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, cast, override
 
-import decent_bench.utils.interoperability as iop
+from decent_array.types import Devices, Frameworks
+
 from decent_bench.costs._base._cost import Cost
+from decent_bench.costs._decorators import autodecorate_cost_method
 from decent_bench.costs._empirical_risk._empirical_risk_cost import EmpiricalRiskCost
 from decent_bench.utils._logger import LOGGER
 from decent_bench.utils._tags import Tag, tags
@@ -13,8 +15,6 @@ from decent_bench.utils.types import (
     EmpiricalRiskBatchSize,
     EmpiricalRiskIndices,
     EmpiricalRiskReduction,
-    SupportedDevices,
-    SupportedFrameworks,
 )
 
 if TYPE_CHECKING:
@@ -28,6 +28,13 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
+
+
+_PYTORCH_DEVICES = {
+    Devices.CPU: "cpu",
+    Devices.GPU: "cuda",
+    Devices.MPS: "mps",
+}
 
 
 class _IndexDataset:
@@ -81,7 +88,7 @@ class PyTorchCost(EmpiricalRiskCost):
         *,
         batch_size: EmpiricalRiskBatchSize = "all",
         max_batch_size: int | None = None,
-        device: SupportedDevices = SupportedDevices.CPU,
+        device: Devices = Devices.CPU,
         use_dataloader: bool = False,
         dataloader_kwargs: dict[str, Any] | None = None,
         load_dataset: bool = True,
@@ -109,7 +116,7 @@ class PyTorchCost(EmpiricalRiskCost):
                 when `indices` is set to "all" but the dataset is too large to fit in memory at once. If not specified,
                 it will default to the batch_size (if batch_size is an int) or the total number of samples
                 (if batch_size is "all").
-            device (SupportedDevices): Device to run computations on. Make sure to test CPU vs GPU performance for your
+            device (Devices): Device to run computations on. Make sure to test CPU vs GPU performance for your
                 specific model and dataset, as it can vary.
             use_dataloader (bool): Whether to use DataLoader for batching.
                 Can be beneficial for large datasets which can't fit into memory or when using an accelerator.
@@ -162,7 +169,10 @@ class PyTorchCost(EmpiricalRiskCost):
         self._optimizer: torch.optim.Optimizer | None = None
         self._scheduler: torch.optim.lr_scheduler.LRScheduler | None = None
 
-        self._pytorch_device: str = iop.device_to_framework_device(device, framework=self.framework)
+        try:
+            self._pytorch_device = _PYTORCH_DEVICES[device]
+        except KeyError as error:
+            raise ValueError(f"Unsupported PyTorch device: {device}") from error
         self.model = self.model.to(self._pytorch_device)
         self.loss_fn = self.loss_fn.to(self._pytorch_device)
 
@@ -204,11 +214,11 @@ class PyTorchCost(EmpiricalRiskCost):
         return (self.total_params,)
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.PYTORCH
+    def framework(self) -> Frameworks:
+        return Frameworks.PYTORCH
 
     @property
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         return self._device
 
     @property
@@ -261,7 +271,7 @@ class PyTorchCost(EmpiricalRiskCost):
         params = [p.detach().flatten() for p in self._params_list]
         return torch.cat(params).to(self._pytorch_device)
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.predict)
+    @autodecorate_cost_method(EmpiricalRiskCost.predict)
     def predict(self, x: torch.Tensor, data: list[torch.Tensor]) -> list[torch.Tensor]:
         """
         Make predictions at x on the given data.
@@ -296,9 +306,9 @@ class PyTorchCost(EmpiricalRiskCost):
                 outputs = self.final_activation(outputs)
                 final_outputs.extend(outputs.detach().cpu().tolist())
 
-        return final_outputs
+            return final_outputs
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.function)
+    @autodecorate_cost_method(EmpiricalRiskCost.function)
     def function(self, x: torch.Tensor, indices: EmpiricalRiskIndices = "batch") -> float:
         self._set_model_parameters(x)
         if self.model.training:
@@ -315,7 +325,7 @@ class PyTorchCost(EmpiricalRiskCost):
 
         return float(total_loss / len(self.batch_used))
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.gradient)
+    @autodecorate_cost_method(EmpiricalRiskCost.gradient)
     def gradient(
         self,
         x: torch.Tensor,
@@ -406,7 +416,7 @@ class PyTorchCost(EmpiricalRiskCost):
 
         return all_grads
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.hessian)
+    @autodecorate_cost_method(EmpiricalRiskCost.hessian)
     def hessian(self, x: torch.Tensor, indices: EmpiricalRiskIndices = "batch") -> torch.Tensor:
         """
         Compute the Hessian matrix.
@@ -420,7 +430,7 @@ class PyTorchCost(EmpiricalRiskCost):
         """
         raise NotImplementedError("Hessian computation is not implemented for PyTorchCost.")
 
-    @iop.autodecorate_cost_method(EmpiricalRiskCost.proximal)
+    @autodecorate_cost_method(EmpiricalRiskCost.proximal)
     def proximal(self, x: torch.Tensor, penalty: float) -> torch.Tensor:
         """
         Compute the proximal operator.
@@ -596,7 +606,6 @@ class PyTorchCost(EmpiricalRiskCost):
         return torch.utils.data.DataLoader(
             cast("torch.utils.data.Dataset[Any]", self._dataset),
             batch_size=self.batch_size,
-            generator=iop.rng_torch(SupportedDevices.CPU),  # DataLoader shuffling must be done on CPU
             collate_fn=self._collate_xy_idx,
             **self._dataloader_kwargs,
         )
