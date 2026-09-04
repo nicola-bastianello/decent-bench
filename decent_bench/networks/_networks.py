@@ -321,7 +321,7 @@ class Network(ABC):  # noqa: B024
         # compress the message
         msg = cast("Array", self._message_compression[sender].compress(iop.copy(msg)))
         # generate noise
-        noise = self._message_noise[sender].make_noise((len(confirmed_receivers), *iop.shape(msg)), framework, device)
+        noise = self._message_noise[sender].make_noise((len(confirmed_receivers), *iop.shape(msg)))
         # transmit messages
         for i, r in enumerate(confirmed_receivers):
             transmitted_msg = msg if noise is None else msg + noise[i]

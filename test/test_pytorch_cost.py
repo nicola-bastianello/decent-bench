@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 from decent_bench.costs import PyTorchCost
-from decent_bench.utils.types import SupportedDevices
+from decent_array.types import Devices
 
 torch = pytest.importorskip("torch")
 CUDA = torch.cuda.is_available()
@@ -16,9 +16,9 @@ MPS = torch.backends.mps.is_available()
 backends = pytest.mark.parametrize(
     "device",
     [
-        pytest.param(SupportedDevices.CPU, id="cpu"),
-        pytest.param(SupportedDevices.GPU, id="cuda", marks=pytest.mark.skipif(not CUDA, reason="CUDA not available")),
-        pytest.param(SupportedDevices.MPS, id="mps", marks=pytest.mark.skipif(not MPS, reason="MPS not available")),
+        pytest.param(Devices.CPU, id="cpu"),
+        pytest.param(Devices.GPU, id="cuda", marks=pytest.mark.skipif(not CUDA, reason="CUDA not available")),
+        pytest.param(Devices.MPS, id="mps", marks=pytest.mark.skipif(not MPS, reason="MPS not available")),
     ],
 )
 
@@ -52,7 +52,7 @@ def _make_cost(
     input_size: int = 4,
     hidden_size: int = 10,
     output_size: int = 3,
-    device: SupportedDevices = SupportedDevices.CPU,
+    device: Devices = Devices.CPU,
     cost_kwargs: dict[str, Any] | None = None,
 ) -> PyTorchCost:
     torch.manual_seed(7)
@@ -69,7 +69,7 @@ def _make_cost(
 
 
 @backends
-def test_per_sample_gradients_match_individual_gradients(device: SupportedDevices) -> None:
+def test_per_sample_gradients_match_individual_gradients(device: Devices) -> None:
     dataset = _make_dataset()
     cost = _make_cost(dataset, max_batch_size=3, batch_size=10, device=device)
 
@@ -86,7 +86,7 @@ def test_per_sample_gradients_match_individual_gradients(device: SupportedDevice
 
 
 @backends
-def test_mean_gradient_matches_mean_of_per_sample_gradients(device: SupportedDevices) -> None:
+def test_mean_gradient_matches_mean_of_per_sample_gradients(device: Devices) -> None:
     dataset = _make_dataset()
     cost = _make_cost(dataset, max_batch_size=4, batch_size=9, device=device)
 
@@ -101,7 +101,7 @@ def test_mean_gradient_matches_mean_of_per_sample_gradients(device: SupportedDev
 
 
 @backends
-def test_max_batch_size_does_not_change_function_or_gradients(device: SupportedDevices) -> None:
+def test_max_batch_size_does_not_change_function_or_gradients(device: Devices) -> None:
     dataset = _make_dataset(n_samples=23)
     base_cost = _make_cost(dataset, max_batch_size=23, batch_size=11, device=device)
     chunked_cost = _make_cost(dataset, max_batch_size=4, batch_size=11, device=device)
@@ -123,7 +123,7 @@ def test_max_batch_size_does_not_change_function_or_gradients(device: SupportedD
 
 
 @backends
-def test_max_batch_size_does_not_change_predict_outputs(device: SupportedDevices) -> None:
+def test_max_batch_size_does_not_change_predict_outputs(device: Devices) -> None:
     dataset = _make_dataset(n_samples=15)
     cost_a = _make_cost(dataset, max_batch_size=15, batch_size=8, device=device)
     cost_b = _make_cost(dataset, max_batch_size=2, batch_size=8, device=device)
@@ -140,7 +140,7 @@ def test_max_batch_size_does_not_change_predict_outputs(device: SupportedDevices
 
 
 @backends
-def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot(device: SupportedDevices) -> None:
+def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot(device: Devices) -> None:
     dataset = _make_dataset(n_samples=21)
 
     torch.manual_seed(21)
@@ -196,11 +196,11 @@ def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot(device:
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning",
     r"ignore:.*torch\.jit\.script_method.*:DeprecationWarning",
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
-def test_picklable(device: SupportedDevices, cost_kwargs: dict[str, Any] | None) -> None:
+def test_picklable(device: Devices, cost_kwargs: dict[str, Any] | None) -> None:
     cost_kwargs = dict(cost_kwargs or {})
     if cost_kwargs.get("use_dataloader"):
         dl_kwargs = dict(cost_kwargs.get("dataloader_kwargs", {}))
-        if device != SupportedDevices.GPU:
+        if device != Devices.GPU:
             dl_kwargs["pin_memory"] = False
             if dl_kwargs.get("num_workers", 0) > 0:
                 dl_kwargs["num_workers"] = 0
@@ -225,7 +225,7 @@ def test_picklable(device: SupportedDevices, cost_kwargs: dict[str, Any] | None)
 
 
 @backends
-def test_local_training_supports_vector_correction(device: SupportedDevices) -> None:
+def test_local_training_supports_vector_correction(device: Devices) -> None:
     dataset = _make_dataset(n_samples=7)
     cost = _make_cost(dataset, max_batch_size=7, batch_size=7, device=device)
 
@@ -256,7 +256,7 @@ def test_local_training_supports_vector_correction(device: SupportedDevices) -> 
 
 
 @backends
-def test_local_training_scalar_regularizer_contributes_gradient(device: SupportedDevices) -> None:
+def test_local_training_scalar_regularizer_contributes_gradient(device: Devices) -> None:
     dataset = _make_dataset(n_samples=7)
     cost = _make_cost(dataset, max_batch_size=7, batch_size=7, device=device)
 

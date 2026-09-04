@@ -8,9 +8,8 @@ import pytest
 from decent_bench.agents import Agent
 from decent_bench.networks import P2PNetwork, FedNetwork
 from decent_bench.costs import L2RegularizerCost
-from decent_bench.utils import interoperability as iop
-from decent_bench.utils.array import Array
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
+from decent_array import Array, interoperability as iop
+from decent_array.types import Devices, Frameworks
 from decent_bench.schemes import (
     AgentActivationScheme,
     AlwaysActive,
@@ -46,8 +45,8 @@ class AddNoise(NoiseScheme):
     def make_noise(
         self,
         shape: tuple[int, ...],
-        framework: SupportedFrameworks,
-        device: SupportedDevices,
+        framework: Frameworks,
+        device: Devices,
     ) -> Array:  # noqa: D102
         return iop.to_array(np.full(shape, self.offset), framework=framework, device=device)
 
@@ -75,11 +74,7 @@ def test_p2p_network(n_agents: int = 10) -> None:
 
     assert len(net.active_agents()) == n_agents
 
-    x = iop.zeros(
-        shape=net.agents()[0].cost.shape,
-        framework=net.agents()[0].cost.framework,
-        device=net.agents()[0].cost.device,
-    )
+    x = iop.zeros(shape=net.agents()[0].cost.shape)
     tot_msg = 0
     for i in net.agents():
         for j in net.neighbors(i):
@@ -97,11 +92,7 @@ def test_fed_network(n_agents: int = 10) -> None:
 
     assert len(net.active_agents()) == n_agents
 
-    x = iop.zeros(
-        shape=net.agents()[0].cost.shape,
-        framework=net.agents()[0].cost.framework,
-        device=net.agents()[0].cost.device,
-    )
+    x = iop.zeros(shape=net.agents()[0].cost.shape)
     tot_msg = 0
     for i in net.agents():
         net.send(i, msg=x)
@@ -136,8 +127,8 @@ def test_fed_network_default_server_is_always_active() -> None:
 
 def test_p2p_network_rejects_mixed_framework_costs() -> None:
     agents = [
-        Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)),
-        Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH)),
+        Agent(L2RegularizerCost((2,), framework=Frameworks.NUMPY)),
+        Agent(L2RegularizerCost((2,), framework=Frameworks.PYTORCH)),
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
@@ -146,8 +137,8 @@ def test_p2p_network_rejects_mixed_framework_costs() -> None:
 
 def test_p2p_network_rejects_mixed_device_costs() -> None:
     agents = [
-        Agent(L2RegularizerCost((2,), device=SupportedDevices.CPU)),
-        Agent(L2RegularizerCost((2,), device=SupportedDevices.GPU)),
+        Agent(L2RegularizerCost((2,), device=Devices.CPU)),
+        Agent(L2RegularizerCost((2,), device=Devices.GPU)),
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
@@ -166,8 +157,8 @@ def test_p2p_network_rejects_mismatched_cost_shapes() -> None:
 
 def test_fed_network_rejects_mixed_framework_clients() -> None:
     clients = [
-        Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)),
-        Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH)),
+        Agent(L2RegularizerCost((2,), framework=Frameworks.NUMPY)),
+        Agent(L2RegularizerCost((2,), framework=Frameworks.PYTORCH)),
     ]
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
@@ -175,8 +166,8 @@ def test_fed_network_rejects_mixed_framework_clients() -> None:
 
 
 def test_fed_network_rejects_custom_server_with_mixed_framework() -> None:
-    clients = [Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.NUMPY)) for _ in range(2)]
-    server = Agent(L2RegularizerCost((2,), framework=SupportedFrameworks.PYTORCH), activation=AlwaysActive())
+    clients = [Agent(L2RegularizerCost((2,), framework=Frameworks.NUMPY)) for _ in range(2)]
+    server = Agent(L2RegularizerCost((2,), framework=Frameworks.PYTORCH), activation=AlwaysActive())
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
         FedNetwork(clients=clients, server=server)
@@ -265,7 +256,7 @@ def test_initialize_message_schemes_dict_used_in_send() -> None:
     net._message_drop = {agent: NoDrops() for agent in agents}
     net._message_noise = {agent: NoNoise() for agent in agents}
 
-    msg = iop.zeros(shape=agents[0].cost.shape, framework=agents[0].cost.framework, device=agents[0].cost.device)
+    msg = iop.zeros(shape=agents[0].cost.shape)
     net.send(agents[0], agents[1], msg)
 
     # verify agent 0's compression scheme was called
@@ -315,7 +306,7 @@ def test_send_rejects_inactive_receiver() -> None:
     sender = Agent(L2RegularizerCost((2,)))
     inactive_receiver = Agent(L2RegularizerCost((2,)), activation=NeverActive())
     net = P2PNetwork(graph=nx.Graph([(0, 1)]), agents=[sender, inactive_receiver])
-    msg = iop.zeros(shape=(2,), framework=sender.cost.framework, device=sender.cost.device)
+    msg = iop.zeros(shape=(2,))
 
     with pytest.raises(ValueError, match="not active or not connected"):
         net.send(sender=sender, receiver=inactive_receiver, msg=msg)

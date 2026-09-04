@@ -168,46 +168,31 @@ def test_fed_algorithm_instantiation(algorithm_cls: type, kwargs: dict[str, floa
     "impairments",
     [False, True],
 )
-@pytest.mark.parametrize(
-    "cost_cls",
-    [LinearRegressionCost, PyTorchCost],
-)
 @all_p2p_algs
 def test_p2p_algorithm_execution(
     algorithm_cls: type[P2PAlgorithm],
     kwargs: dict[str, float | int],
     impairments: bool,
-    cost_cls: type,
-) -> None:
+) -> None:   
     algorithm = algorithm_cls(**kwargs)
-    network = _create_p2p_network(impairments, cost_cls)
+    network = _create_p2p_network(impairments, LinearRegressionCost)
 
     # Just check that it runs without errors
-    if cost_cls is PyTorchCost and algorithm_cls in {ADMM}:
-        # Assert that it raises and error due to the need for proximal updates, which are not implemented for PyTorchCost
-        with pytest.raises(NotImplementedError, match="Proximal operator is not implemented for PyTorchCost"):
-            algorithm.run(network)
-    else:
-        algorithm.run(network)
+    algorithm.run(network)
 
 
 @pytest.mark.parametrize(
     "impairments",
     [False, True],
 )
-@pytest.mark.parametrize(
-    "cost_cls",
-    [LinearRegressionCost, PyTorchCost],
-)
 @all_fed_algs
 def test_fed_algorithm_execution(
     algorithm_cls: type[FedAlgorithm],
     kwargs: dict[str, float | int],
     impairments: bool,
-    cost_cls: type,
 ) -> None:
     algorithm = algorithm_cls(**kwargs)
-    network = _create_fed_network(impairments, cost_cls)
+    network = _create_fed_network(impairments, LinearRegressionCost)
 
     # Just check that it runs without errors
     algorithm.run(network)

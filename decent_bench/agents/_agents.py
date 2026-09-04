@@ -183,7 +183,10 @@ class Agent:
     def _copy_aux_var(self, value: object) -> object:
         if isinstance(value, Mapping):
             return {k: self._copy_aux_var(v) for k, v in value.items()}
-        return iop.copy(cast("Array", value))
+        if isinstance(value, Array):
+            return iop.copy(value)
+
+        return value
 
     def _snapshot(self, iteration: int, force: bool = False) -> None:
         """

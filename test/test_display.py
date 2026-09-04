@@ -12,6 +12,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
+from decent_array import Array
+
 from decent_bench.agents import Agent, AgentHistory
 from decent_bench.algorithms.federated import FedAvg
 from decent_bench.benchmark import BenchmarkProblem, BenchmarkResult, compute_metrics, display_metrics
@@ -921,7 +923,7 @@ def test_metrics_unavailable_without_empirical_risk_cost() -> None:  # noqa: D10
 
 
 def test_classification_metrics_unavailable_with_float_targets() -> None:  # noqa: D103
-    lr_cost = LinearRegressionCost([(np.array([1.0]), np.array([1.0]))])
+    lr_cost = LinearRegressionCost([(Array(np.array([1.0])), Array(np.array([1.0])))])
     network = SimpleNamespace(agents=lambda: [SimpleNamespace(cost=lr_cost)])
     problem = SimpleNamespace(test_data=[(np.array([0.0]), 0.1)], network=network)
 
@@ -932,10 +934,10 @@ def test_classification_metrics_unavailable_with_float_targets() -> None:  # noq
 
 
 def test_server_mse_availability_and_values() -> None:  # noqa: D103
-    test_data = [(np.array([1.0]), np.array([1.0]))]
+    test_data = [(Array(np.array([1.0])), Array(np.array([1.0])))]
     cost = LinearRegressionCost(test_data)
     client = Agent(cost)
-    client.initialize(x=np.array([0.0]))
+    client.initialize(x=Array(np.array([0.0])))
 
     unavailable_problem = SimpleNamespace(
         test_data=test_data,
@@ -946,7 +948,7 @@ def test_server_mse_availability_and_values() -> None:  # noqa: D103
     assert "FedNetwork" in reason
 
     client = Agent(cost)
-    client.initialize(x=np.array([0.0]))
+    client.initialize(x=Array(np.array([0.0])))
 
     fed_problem_without_test_data = BenchmarkProblem(network=FedNetwork([client]))
     available, reason = ml.ServerMSE().is_available(fed_problem_without_test_data)
@@ -954,7 +956,7 @@ def test_server_mse_availability_and_values() -> None:  # noqa: D103
     assert reason == "requires problem.test_data"
 
     client = Agent(cost)
-    client.initialize(x=np.array([0.0]))
+    client.initialize(x=Array(np.array([0.0])))
 
     problem = BenchmarkProblem(network=FedNetwork([client]), test_data=test_data)
     metric = ml.ServerMSE()
@@ -964,8 +966,8 @@ def test_server_mse_availability_and_values() -> None:  # noqa: D103
 
     client_view = AgentMetricsView.from_agent(client)
     server_history = AgentHistory()
-    server_history[0] = np.array([0.0])
-    server_history[1] = np.array([1.0])
+    server_history[0] = Array(np.array([0.0]))
+    server_history[1] = Array(np.array([1.0]))
     server_view = AgentMetricsView(
         id=uuid4(),
         cost=cost,

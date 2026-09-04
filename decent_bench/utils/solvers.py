@@ -61,8 +61,8 @@ def solve(
     # linear regression
     elif isinstance(cost, SumCost) and all(isinstance(c, LinearRegressionCost) for c in cost.costs):
         z = iop.zeros(shape=cost.costs[0].shape)
-        Q = np.asarray(sum(c.hessian(z, indices="all") for c in cost.costs))  # noqa: N806
-        r = np.asarray(sum(c.gradient(z, indices="all") for c in cost.costs))
+        Q = sum(c.hessian(z, indices="all") for c in cost.costs).value  # noqa: N806
+        r = sum(c.gradient(z, indices="all") for c in cost.costs).value
         try:
             x_optimal_np = np.linalg.solve(Q, -r)
         except np.linalg.LinAlgError:

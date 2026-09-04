@@ -247,6 +247,7 @@ def _mse_at_x(cost: Cost, x: Array, problem: "BenchmarkProblem") -> float:
             "Predictions contain NaN or Inf values, which are not valid for MSE calculation, returning NaN for MSE"
         )
         return np.nan
+    print(test_y)
     return float(sk_metrics.mean_squared_error(test_y, preds))
 
 
@@ -323,7 +324,7 @@ def _split_dataset(data: Dataset) -> tuple[tuple[Array, ...], NDArray[float64]]:
     """
     x, y = zip(*data, strict=True)
     test_x = tuple(x)
-    test_y = np.array(y)
+    test_y = y
     return test_x, test_y
 
 

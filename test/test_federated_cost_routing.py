@@ -3,6 +3,9 @@ from typing import Any
 import numpy as np
 import pytest
 
+from decent_array.types import Devices, Frameworks
+from decent_array import Array, interoperability as iop
+
 from decent_bench.agents import Agent
 from decent_bench.algorithms.federated import FedAdagrad, FedAdam, FedAvg, FedDyn, FedPD, FedProx, FedYogi, Scaffold
 from decent_bench.costs import BaseRegularizerCost, Cost, EmpiricalRiskCost, ZeroCost
@@ -10,9 +13,8 @@ from decent_bench.utils.types import (
     Dataset,
     EmpiricalRiskIndices,
     EmpiricalRiskReduction,
-    SupportedDevices,
-    SupportedFrameworks,
 )
+from decent_bench.costs._decorators import autodecorate_cost_method
 
 
 class TrackingCost(Cost):
@@ -25,12 +27,12 @@ class TrackingCost(Cost):
         return (1,)
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.NUMPY
+    def framework(self) -> Frameworks:
+        return Frameworks.NUMPY
 
     @property
-    def device(self) -> SupportedDevices:
-        return SupportedDevices.CPU
+    def device(self) -> Devices:
+        return Devices.CPU
 
     @property
     def m_smooth(self) -> float:
@@ -40,19 +42,23 @@ class TrackingCost(Cost):
     def m_cvx(self) -> float:
         return 0.0
 
+    @autodecorate_cost_method(Cost.function)
     def function(self, x: np.ndarray, **kwargs: Any) -> float:
         del x, kwargs
         return 0.0
 
+    @autodecorate_cost_method(Cost.gradient)
     def gradient(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x
         self.gradient_kwargs.append(dict(kwargs))
         return self._gradient.copy()
 
+    @autodecorate_cost_method(Cost.hessian)
     def hessian(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x, kwargs
         return np.zeros((1, 1), dtype=float)
 
+    @autodecorate_cost_method(Cost.proximal)
     def proximal(self, x: np.ndarray, rho: float, **kwargs: Any) -> np.ndarray:
         del rho, kwargs
         return x
@@ -72,19 +78,23 @@ class TrackingRegularizerCost(BaseRegularizerCost):
     def m_cvx(self) -> float:
         return 0.0
 
+    @autodecorate_cost_method(Cost.function)
     def function(self, x: np.ndarray, **kwargs: Any) -> float:
         del x, kwargs
         return 0.0
 
+    @autodecorate_cost_method(Cost.gradient)
     def gradient(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x
         self.gradient_kwargs.append(dict(kwargs))
         return self._gradient.copy()
 
+    @autodecorate_cost_method(Cost.hessian)
     def hessian(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x, kwargs
         return np.zeros((1, 1), dtype=float)
 
+    @autodecorate_cost_method(Cost.proximal)
     def proximal(self, x: np.ndarray, rho: float, **kwargs: Any) -> np.ndarray:
         del rho, kwargs
         return x
@@ -112,12 +122,12 @@ class TrackingEmpiricalCost(EmpiricalRiskCost):
         return (1,)
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.NUMPY
+    def framework(self) -> Frameworks:
+        return Frameworks.NUMPY
 
     @property
-    def device(self) -> SupportedDevices:
-        return SupportedDevices.CPU
+    def device(self) -> Devices:
+        return Devices.CPU
 
     @property
     def m_smooth(self) -> float:
@@ -139,15 +149,18 @@ class TrackingEmpiricalCost(EmpiricalRiskCost):
     def dataset(self) -> Dataset:
         return self._dataset
 
+    @autodecorate_cost_method(EmpiricalRiskCost.predict)
     def predict(self, x: np.ndarray, data: list[np.ndarray]) -> np.ndarray:
         del x
         return np.asarray(data)
 
+    @autodecorate_cost_method(Cost.function)
     def function(self, x: np.ndarray, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> float:
         del x, kwargs
         self._sample_batch_indices(indices)
         return 0.0
 
+    @autodecorate_cost_method(Cost.gradient)
     def gradient(
         self,
         x: np.ndarray,
@@ -162,6 +175,7 @@ class TrackingEmpiricalCost(EmpiricalRiskCost):
             return np.repeat(self._gradient[np.newaxis, :], len(sampled_indices), axis=0)
         return self._gradient.copy()
 
+    @autodecorate_cost_method(Cost.hessian)
     def hessian(self, x: np.ndarray, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> np.ndarray:
         del x, kwargs
         self._sample_batch_indices(indices)
@@ -179,7 +193,7 @@ def _run_federated_local_update(
     step_size: float = 1.0,
     num_local_steps: int = 1,
     mu: float = 0.5,
-) -> np.ndarray:
+) -> Array:
     client = Agent(cost)
     server = Agent(ZeroCost(cost.shape))
 
@@ -204,23 +218,23 @@ def _run_federated_local_update(
 
     aux_vars = None
     if isinstance(algorithm, Scaffold):
-        aux_vars = {"c_i": np.zeros(cost.shape, dtype=float)}
+        aux_vars = {"c_i": iop.zeros(cost.shape)}
     elif isinstance(algorithm, FedDyn):
-        aux_vars = {"g": np.zeros(cost.shape, dtype=float)}
+        aux_vars = {"g": iop.zeros(cost.shape)}
     elif isinstance(algorithm, FedPD):
         aux_vars = {
-            "lambda": np.zeros(cost.shape, dtype=float),
-            "center": np.zeros(cost.shape, dtype=float),
+            "lambda": iop.zeros(cost.shape),
+            "center": iop.zeros(cost.shape),
         }
-    client.initialize(x=np.zeros(cost.shape, dtype=float), aux_vars=aux_vars)
-    server.initialize(x=np.zeros(cost.shape, dtype=float))
+    client.initialize(x=iop.zeros(cost.shape), aux_vars=aux_vars)
+    server.initialize(x=iop.zeros(cost.shape))
     if isinstance(algorithm, Scaffold):
         client._received_messages.put(  # noqa: SLF001
             server,
-            np.stack([np.zeros(cost.shape, dtype=float), np.zeros(cost.shape, dtype=float)]),
+            iop.stack([iop.zeros(cost.shape), iop.zeros(cost.shape)]),
         )
     elif not isinstance(algorithm, FedPD):
-        client._received_messages.put(server, np.zeros(cost.shape, dtype=float))  # noqa: SLF001
+        client._received_messages.put(server, iop.zeros(cost.shape))  # noqa: SLF001
     if isinstance(algorithm, FedPD):
         algorithm._num_local_steps_by_client = {client: num_local_steps}  # noqa: SLF001
     if isinstance(algorithm, FedPD):
@@ -252,7 +266,7 @@ def test_empirical_costs_use_minibatch_local_updates(algorithm_name: str, expect
 
     updated = _run_federated_local_update(algorithm_name, cost, num_local_steps=3)
 
-    np.testing.assert_allclose(updated, np.array([expected]))
+    np.testing.assert_allclose(updated.value, np.array([expected]))
     assert len(cost.gradient_indices) == 3
     assert all(len(indices) == 2 for indices in cost.gradient_indices)
     assert set().union(*(set(indices) for indices in cost.gradient_indices)) == set(range(cost.n_samples))
@@ -278,7 +292,7 @@ def test_empirical_regularized_costs_keep_minibatch_local_updates(algorithm_name
 
     updated = _run_federated_local_update(algorithm_name, objective, num_local_steps=3)
 
-    np.testing.assert_allclose(updated, np.array([expected]))
+    np.testing.assert_allclose(updated.value, np.array([expected]))
     assert len(empirical_cost.gradient_indices) == 3
     assert all(len(indices) == 2 for indices in empirical_cost.gradient_indices)
     assert set().union(*(set(indices) for indices in empirical_cost.gradient_indices)) == set(
@@ -307,7 +321,7 @@ def test_scaled_empirical_costs_keep_minibatch_local_updates(algorithm_name: str
 
     updated = _run_federated_local_update(algorithm_name, objective, num_local_steps=3)
 
-    np.testing.assert_allclose(updated, np.array([expected]))
+    np.testing.assert_allclose(updated.value, np.array([expected]))
     assert len(empirical_cost.gradient_indices) == 3
     assert all(len(indices) == 2 for indices in empirical_cost.gradient_indices)
     assert set().union(*(set(indices) for indices in empirical_cost.gradient_indices)) == set(
@@ -333,7 +347,7 @@ def test_plain_costs_use_full_gradient_local_updates(algorithm_name: str, expect
 
     updated = _run_federated_local_update(algorithm_name, cost, num_local_steps=3)
 
-    np.testing.assert_allclose(updated, np.array([expected]))
+    np.testing.assert_allclose(updated.value, np.array([expected]))
     assert len(cost.gradient_kwargs) == 3
     assert all(kwargs == {} for kwargs in cost.gradient_kwargs)
 
@@ -349,7 +363,7 @@ def test_sum_costs_over_non_empirical_terms_use_full_gradient_local_updates(algo
     updated = _run_federated_local_update(algorithm_name, objective, num_local_steps=2)
 
     expected = -3.0 if algorithm_name in {"feddyn", "fedpd"} else -6.0
-    np.testing.assert_allclose(updated, np.array([expected]))
+    np.testing.assert_allclose(updated.value, np.array([expected]))
     assert len(cost_a.gradient_kwargs) == 2
     assert len(cost_b.gradient_kwargs) == 2
     assert all(kwargs == {} for kwargs in cost_a.gradient_kwargs)
@@ -377,7 +391,7 @@ def test_scaled_costs_over_non_empirical_terms_use_full_gradient_local_updates(
 
     updated = _run_federated_local_update(algorithm_name, objective, num_local_steps=num_local_steps)
 
-    np.testing.assert_allclose(updated, np.array([expected]))
+    np.testing.assert_allclose(updated.value, np.array([expected]))
     assert len(cost.gradient_kwargs) == num_local_steps
     assert all(kwargs == {} for kwargs in cost.gradient_kwargs)
 
@@ -402,7 +416,7 @@ def test_regularizers_follow_the_non_batched_local_update_path(
 
     updated = _run_federated_local_update(algorithm_name, regularizer, num_local_steps=num_local_steps)
 
-    np.testing.assert_allclose(updated, np.array([expected]))
+    np.testing.assert_allclose(updated.value, np.array([expected]))
     assert len(regularizer.gradient_kwargs) == num_local_steps
     assert all(kwargs == {} for kwargs in regularizer.gradient_kwargs)
 
@@ -415,6 +429,6 @@ def test_zero_costs_do_not_need_special_local_update_handling(algorithm_name: st
 
     updated = _run_federated_local_update(algorithm_name, cost, num_local_steps=3)
 
-    np.testing.assert_allclose(updated, np.array([0.0]))
+    np.testing.assert_allclose(updated.value, np.array([0.0]))
     assert len(cost.gradient_kwargs) == 3
     assert all(kwargs == {} for kwargs in cost.gradient_kwargs)

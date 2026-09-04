@@ -8,7 +8,9 @@ from decent_bench.algorithms.federated import FedAdagrad, FedAdam, FedAvg, FedPr
 from decent_bench.costs import Cost
 from decent_bench.networks import FedNetwork
 from decent_bench.schemes import DropScheme, NoDrops
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
+from decent_bench.costs._decorators import autodecorate_cost_method
+from decent_array.types import Devices, Frameworks
+from decent_array import Array, interoperability as iop
 
 
 class TrackingCost(Cost):
@@ -21,12 +23,12 @@ class TrackingCost(Cost):
         return (1,)
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.NUMPY
+    def framework(self) -> Frameworks:
+        return Frameworks.NUMPY
 
     @property
-    def device(self) -> SupportedDevices:
-        return SupportedDevices.CPU
+    def device(self) -> Devices:
+        return Devices.CPU
 
     @property
     def m_smooth(self) -> float:
@@ -36,18 +38,22 @@ class TrackingCost(Cost):
     def m_cvx(self) -> float:
         return 0.0
 
+    @autodecorate_cost_method(Cost.function)
     def function(self, x: np.ndarray, **kwargs: Any) -> float:
         del x, kwargs
         return 0.0
 
+    @autodecorate_cost_method(Cost.gradient)
     def gradient(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x, kwargs
         return self._gradient.copy()
 
+    @autodecorate_cost_method(Cost.hessian)
     def hessian(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x, kwargs
         return np.zeros((1, 1), dtype=float)
 
+    @autodecorate_cost_method(Cost.proximal)
     def proximal(self, x: np.ndarray, rho: float, **kwargs: Any) -> np.ndarray:
         del rho, kwargs
         return x
@@ -67,8 +73,8 @@ def _make_fed_network(*costs: Cost) -> tuple[FedNetwork, list[Agent]]:
     clients = [Agent(cost) for cost in costs]
     network = FedNetwork(clients=clients)
     for client in clients:
-        client.initialize(x=np.zeros(client.cost.shape, dtype=float))
-    network.server().initialize(x=np.zeros(clients[0].cost.shape, dtype=float))
+        client.initialize(x=iop.zeros(client.cost.shape))
+    network.server().initialize(x=iop.zeros(clients[0].cost.shape))
     return network, clients
 
 
@@ -83,11 +89,11 @@ def test_aggregation_uses_only_received_client_updates(algorithm_cls: type, kwar
     algorithm = algorithm_cls(**kwargs)
     network, clients = _make_fed_network(TrackingCost(1.0), TrackingCost(2.0))
 
-    network.send(sender=clients[0], receiver=network.server(), msg=np.array([3.0]))
+    network.send(sender=clients[0], receiver=network.server(), msg=Array(np.array([3.0])))
 
     algorithm.aggregate(network, clients)
 
-    np.testing.assert_allclose(network.server().x, np.array([3.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([3.0]))
 
 
 @pytest.mark.parametrize(
@@ -104,12 +110,12 @@ def test_default_aggregation_is_uniform(algorithm_cls: type, kwargs: dict[str, f
         TrackingCost(gradient_value=3.0, n_samples=3),
     )
 
-    network.send(sender=clients[0], receiver=network.server(), msg=np.array([-1.0]))
-    network.send(sender=clients[1], receiver=network.server(), msg=np.array([-3.0]))
+    network.send(sender=clients[0], receiver=network.server(), msg=Array(np.array([-1.0])))
+    network.send(sender=clients[1], receiver=network.server(), msg=Array(np.array([-3.0])))
 
     algorithm.aggregate(network, clients)
 
-    np.testing.assert_allclose(network.server().x, np.array([-2.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.0]))
 
 
 @pytest.mark.parametrize(
@@ -153,12 +159,12 @@ def test_clients_without_server_broadcast_do_not_participate(
 
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
-    np.testing.assert_allclose(network.server().x, np.array([-1.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-1.0]))
 
     network._step(1)  # noqa: SLF001
     algorithm.step(network, 1)
 
-    np.testing.assert_allclose(network.server().x, np.array([-1.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-1.0]))
 
 
 @pytest.mark.parametrize(
@@ -203,13 +209,13 @@ def test_fedopt_aggregation_is_uniform(algorithm_cls: type, kwargs: dict[str, fl
     )
     algorithm.initialize(network)
 
-    network.server().x = np.array([1.0])
-    network.send(sender=clients[0], receiver=network.server(), msg=np.array([1.0]))
-    network.send(sender=clients[1], receiver=network.server(), msg=np.array([3.0]))
+    network.server().x = Array(np.array([1.0]))
+    network.send(sender=clients[0], receiver=network.server(), msg=Array(np.array([1.0])))
+    network.send(sender=clients[1], receiver=network.server(), msg=Array(np.array([3.0])))
 
     algorithm.aggregate(network, clients)
 
-    np.testing.assert_allclose(network.server().aux_vars["m"], np.array([2.0]))
+    np.testing.assert_allclose(network.server().aux_vars["m"].value, np.array([2.0]))
 
 
 @pytest.mark.parametrize(
@@ -256,13 +262,13 @@ def test_fedopt_aggregation_uses_only_received_client_deltas(
     network, clients = _make_fed_network(TrackingCost(1.0), TrackingCost(2.0))
     algorithm.initialize(network)
 
-    network.server().x = np.array([7.0])
-    network.send(sender=clients[0], receiver=network.server(), msg=np.array([2.0]))
+    network.server().x = Array(np.array([7.0]))
+    network.send(sender=clients[0], receiver=network.server(), msg=Array(np.array([2.0])))
 
     algorithm.aggregate(network, clients)
 
-    np.testing.assert_allclose(network.server().aux_vars["m"], np.array([2.0]))
-    np.testing.assert_allclose(network.server().aux_vars["v"], np.array([expected_v]))
+    np.testing.assert_allclose(network.server().aux_vars["m"].value, np.array([2.0]))
+    np.testing.assert_allclose(network.server().aux_vars["v"].value, np.array([expected_v]))
 
 
 @pytest.mark.parametrize(
@@ -371,19 +377,19 @@ def test_fedopt_server_state_updates_follow_variant_formula(
     network, clients = _make_fed_network(TrackingCost(1.0), TrackingCost(2.0))
     algorithm.initialize(network)
 
-    network.server().x = np.array([1.0])
-    network.server().aux_vars["m"] = np.array([initial_m])
-    network.server().aux_vars["v"] = np.array([initial_v])
-    network.send(sender=clients[0], receiver=network.server(), msg=np.array([2.0]))
-    network.send(sender=clients[1], receiver=network.server(), msg=np.array([4.0]))
+    network.server().x = Array(np.array([1.0]))
+    network.server().aux_vars["m"] = Array(np.array([initial_m]))
+    network.server().aux_vars["v"] = Array(np.array([initial_v]))
+    network.send(sender=clients[0], receiver=network.server(), msg=Array(np.array([2.0])))
+    network.send(sender=clients[1], receiver=network.server(), msg=Array(np.array([4.0])))
 
     algorithm.aggregate(network, clients)
 
     expected_m = np.array([2.5])
     expected_x = np.array([1.0 + (2.0 * expected_m[0] / (np.sqrt(expected_v) + 1.0))])
-    np.testing.assert_allclose(network.server().aux_vars["m"], expected_m)
-    np.testing.assert_allclose(network.server().aux_vars["v"], np.array([expected_v]))
-    np.testing.assert_allclose(network.server().x, expected_x)
+    np.testing.assert_allclose(network.server().aux_vars["m"].value, expected_m)
+    np.testing.assert_allclose(network.server().aux_vars["v"].value, np.array([expected_v]))
+    np.testing.assert_allclose(network.server().x.value, expected_x)
 
 
 @pytest.mark.parametrize(
@@ -435,16 +441,16 @@ def test_fedopt_clients_without_server_broadcast_do_not_participate(
 
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
-    first_round_x = np.array(network.server().x, copy=True)
-    first_round_m = np.array(network.server().aux_vars["m"], copy=True)
-    first_round_v = np.array(network.server().aux_vars["v"], copy=True)
+    first_round_x = np.array(network.server().x.value, copy=True)
+    first_round_m = np.array(network.server().aux_vars["m"].value, copy=True)
+    first_round_v = np.array(network.server().aux_vars["v"].value, copy=True)
 
     network._step(1)  # noqa: SLF001
     algorithm.step(network, 1)
 
-    np.testing.assert_allclose(network.server().x, first_round_x)
-    np.testing.assert_allclose(network.server().aux_vars["m"], first_round_m)
-    np.testing.assert_allclose(network.server().aux_vars["v"], first_round_v)
+    np.testing.assert_allclose(network.server().x.value, first_round_x)
+    np.testing.assert_allclose(network.server().aux_vars["m"].value, first_round_m)
+    np.testing.assert_allclose(network.server().aux_vars["v"].value, first_round_v)
 
 
 @pytest.mark.parametrize(
@@ -460,11 +466,11 @@ def test_fedopt_local_uploads_are_model_deltas(algorithm_cls: type, kwargs: dict
     network, clients = _make_fed_network(TrackingCost(1.0), TrackingCost(2.0))
     algorithm.initialize(network)
 
-    network.server().x = np.array([5.0])
+    network.server().x = Array(np.array([5.0]))
     selected_clients = network.clients()
     algorithm.server_broadcast(network, selected_clients)
     participating_clients = algorithm._clients_with_server_broadcast(network, selected_clients)
     algorithm._run_local_updates(network, participating_clients)
 
-    np.testing.assert_allclose(network.server().message(clients[0]), np.array([-1.0]))
-    np.testing.assert_allclose(network.server().message(clients[1]), np.array([-2.0]))
+    np.testing.assert_allclose(network.server().message(clients[0]).value, np.array([-1.0]))
+    np.testing.assert_allclose(network.server().message(clients[1]).value, np.array([-2.0]))

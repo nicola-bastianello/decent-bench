@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 import zstandard as zstd
 
-import decent_bench.utils.interoperability as iop
+from decent_array import interoperability as iop
 from decent_bench.agents import Agent
 from decent_bench.algorithms import Algorithm
 from decent_bench.algorithms.p2p import ADMM, ATC, DGD

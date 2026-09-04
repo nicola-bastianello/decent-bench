@@ -8,7 +8,7 @@ from decent_bench.algorithms.federated import FedAvg, FedNova
 from decent_bench.costs import EmpiricalRiskCost
 from decent_bench.networks import FedNetwork
 from decent_bench.schemes import DropScheme, NoDrops
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
+from decent_array.types import Devices, Frameworks
 
 
 _NORMALIZER_CHANNEL = "normalizer"
@@ -26,12 +26,12 @@ class TrackingCost(EmpiricalRiskCost):
         return (1,)
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.NUMPY
+    def framework(self) -> Frameworks:
+        return Frameworks.NUMPY
 
     @property
-    def device(self) -> SupportedDevices:
-        return SupportedDevices.CPU
+    def device(self) -> Devices:
+        return Devices.CPU
 
     @property
     def m_smooth(self) -> float:

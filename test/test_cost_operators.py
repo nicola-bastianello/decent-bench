@@ -1,9 +1,10 @@
 import numpy as np
 import pytest
 
-import decent_bench.utils.interoperability as iop
+from decent_array import Array
+from decent_array import interoperability as iop
 from decent_bench.costs import Cost, L1RegularizerCost, L2RegularizerCost, QuadraticCost, SumCost
-from decent_bench.utils.types import SupportedDevices, SupportedFrameworks
+from decent_array.types import Devices, Frameworks
 
 
 def _simple_quadratic(A_scale: float, b_scale: float, c: float = 0.0) -> QuadraticCost:
@@ -17,8 +18,8 @@ class _SimpleCost(Cost):
         self,
         scale: float,
         *,
-        framework: SupportedFrameworks = SupportedFrameworks.NUMPY,
-        device: SupportedDevices = SupportedDevices.CPU,
+        framework: Frameworks = Frameworks.NUMPY,
+        device: Devices = Devices.CPU,
     ):
         self.scale = scale
         self._framework = framework
@@ -29,11 +30,11 @@ class _SimpleCost(Cost):
         return (2,)
 
     @property
-    def framework(self) -> SupportedFrameworks:
+    def framework(self) -> Frameworks:
         return self._framework
 
     @property
-    def device(self) -> SupportedDevices:
+    def device(self) -> Devices:
         return self._device
 
     @property
@@ -44,16 +45,16 @@ class _SimpleCost(Cost):
     def m_cvx(self) -> float:
         return 0.0
 
-    def function(self, x: np.ndarray) -> float:
-        return float(self.scale * np.sum(x * x))
+    def function(self, x: Array) -> float:
+        return float(self.scale * iop.sum(x * x).item())
 
-    def gradient(self, x: np.ndarray) -> np.ndarray:
+    def gradient(self, x: Array) -> Array:
         return 2.0 * self.scale * x
 
-    def hessian(self, x: np.ndarray) -> np.ndarray:  # noqa: ARG002
-        return 2.0 * self.scale * np.eye(2)
+    def hessian(self, x: Array) -> Array:  # noqa: ARG002
+        return 2.0 * self.scale * iop.eye(2)
 
-    def proximal(self, x: np.ndarray, rho: float) -> np.ndarray:
+    def proximal(self, x: Array, rho: float) -> Array:
         return x / (1.0 + 2.0 * rho * self.scale)
 
 
@@ -71,7 +72,7 @@ def _assert_quadratic_matches(
 
 def test_cost_scalar_multiplication_and_reverse_multiplication() -> None:
     cost = _simple_quadratic(A_scale=2.0, b_scale=1.0, c=3.0)
-    x = np.array([1.0, -2.0])
+    x = Array(np.array([1.0, -2.0]))
 
     scaled_left = 2.5 * cost
     scaled_right = cost * 2.5
@@ -84,7 +85,7 @@ def test_cost_scalar_multiplication_and_reverse_multiplication() -> None:
 
 def test_cost_scalar_division() -> None:
     cost = _simple_quadratic(A_scale=4.0, b_scale=2.0, c=1.0)
-    x = np.array([0.5, -0.25])
+    x = Array(np.array([0.5, -0.25]))
     divided = cost / 2.0
 
     assert divided.function(x) == pytest.approx(0.5 * cost.function(x))
@@ -95,7 +96,7 @@ def test_cost_scalar_division() -> None:
 def test_quadratic_addition_preserves_type_and_exact_behavior() -> None:
     cost_a = _simple_quadratic(A_scale=1.0, b_scale=1.0, c=1.0)
     cost_b = _simple_quadratic(A_scale=3.0, b_scale=2.0, c=-1.0)
-    x = np.array([1.0, 2.0])
+    x = Array(np.array([1.0, 2.0]))
     rho = 0.4
 
     added = cost_a + cost_b
@@ -108,7 +109,7 @@ def test_quadratic_addition_preserves_type_and_exact_behavior() -> None:
 def test_quadratic_subtraction_preserves_type_and_exact_behavior() -> None:
     cost_a = _simple_quadratic(A_scale=1.0, b_scale=1.0, c=1.0)
     cost_b = _simple_quadratic(A_scale=3.0, b_scale=2.0, c=-1.0)
-    x = np.array([1.0, 2.0])
+    x = Array(np.array([1.0, 2.0]))
     rho = 0.4
 
     subtracted = cost_a - cost_b
@@ -121,14 +122,16 @@ def test_quadratic_subtraction_preserves_type_and_exact_behavior() -> None:
 def test_custom_cost_inherits_generic_addition_fallback() -> None:
     cost_a = _SimpleCost(scale=1.0)
     cost_b = _SimpleCost(scale=2.0)
-    x = np.array([1.5, -0.5])
+    x = Array(np.array([1.5, -0.5]))
 
     added = cost_a + cost_b
 
     assert isinstance(added, SumCost)
     assert added.function(x) == pytest.approx(cost_a.function(x) + cost_b.function(x))
-    np.testing.assert_allclose(iop.to_numpy(added.gradient(x)), cost_a.gradient(x) + cost_b.gradient(x))
-    np.testing.assert_allclose(iop.to_numpy(added.hessian(x)), cost_a.hessian(x) + cost_b.hessian(x))
+    expected_gradient = iop.to_numpy(cost_a.gradient(x)) + iop.to_numpy(cost_b.gradient(x))
+    expected_hessian = iop.to_numpy(cost_a.hessian(x)) + iop.to_numpy(cost_b.hessian(x))
+    np.testing.assert_allclose(iop.to_numpy(added.gradient(x)), expected_gradient)
+    np.testing.assert_allclose(iop.to_numpy(added.hessian(x)), expected_hessian)
 
 
 def test_sum_cost_proximal_matches_exact_quadratic_proximal_and_not_sum_of_term_proximals() -> None:
@@ -136,7 +139,7 @@ def test_sum_cost_proximal_matches_exact_quadratic_proximal_and_not_sum_of_term_
     cost_b = _simple_quadratic(A_scale=3.0, b_scale=2.0, c=-1.0)
     summed = SumCost([cost_a, cost_b])
     expected = QuadraticCost(A=cost_a.A + cost_b.A, b=cost_a.b + cost_b.b, c=cost_a.c + cost_b.c)
-    x = np.array([1.0, -0.5])
+    x = Array(np.array([1.0, -0.5]))
     rho = 0.3
 
     actual = iop.to_numpy(summed.proximal(x, rho))
@@ -151,7 +154,7 @@ def test_sum_cost_proximal_raises_for_unsupported_nonsmooth_sum() -> None:
     reg_l1 = L1RegularizerCost(shape=(2,))
     reg_l2 = L2RegularizerCost(shape=(2,))
     summed = SumCost([reg_l1, reg_l2])
-    x = np.array([1.0, -2.0])
+    x = Array(np.array([1.0, -2.0]))
 
     with pytest.raises(
         NotImplementedError,
@@ -163,7 +166,7 @@ def test_sum_cost_proximal_raises_for_unsupported_nonsmooth_sum() -> None:
 def test_cost_radd_supports_sum() -> None:
     cost_a = _simple_quadratic(A_scale=1.0, b_scale=1.0, c=0.0)
     cost_b = _simple_quadratic(A_scale=2.0, b_scale=0.0, c=1.0)
-    x = np.array([1.0, 2.0])
+    x = Array(np.array([1.0, 2.0]))
 
     summed = sum([cost_a, cost_b])
     expected_value = cost_a.function(x) + cost_b.function(x)
@@ -194,32 +197,32 @@ def test_cost_scalar_ops_reject_invalid_inputs() -> None:
 
 
 def test_cost_addition_rejects_mismatched_frameworks() -> None:
-    cost_a = _SimpleCost(scale=1.0, framework=SupportedFrameworks.NUMPY)
-    cost_b = _SimpleCost(scale=2.0, framework=SupportedFrameworks.PYTORCH)
+    cost_a = _SimpleCost(scale=1.0, framework=Frameworks.NUMPY)
+    cost_b = _SimpleCost(scale=2.0, framework=Frameworks.PYTORCH)
 
     with pytest.raises(ValueError, match="Mismatching frameworks"):
         _ = cost_a + cost_b
 
 
 def test_cost_addition_rejects_mismatched_devices() -> None:
-    cost_a = _SimpleCost(scale=1.0, device=SupportedDevices.CPU)
-    cost_b = _SimpleCost(scale=2.0, device=SupportedDevices.GPU)
+    cost_a = _SimpleCost(scale=1.0, device=Devices.CPU)
+    cost_b = _SimpleCost(scale=2.0, device=Devices.GPU)
 
     with pytest.raises(ValueError, match="Mismatching devices"):
         _ = cost_a + cost_b
 
 
 def test_sum_cost_rejects_mismatched_frameworks() -> None:
-    cost_a = _SimpleCost(scale=1.0, framework=SupportedFrameworks.NUMPY)
-    cost_b = _SimpleCost(scale=2.0, framework=SupportedFrameworks.PYTORCH)
+    cost_a = _SimpleCost(scale=1.0, framework=Frameworks.NUMPY)
+    cost_b = _SimpleCost(scale=2.0, framework=Frameworks.PYTORCH)
 
     with pytest.raises(ValueError, match="Mismatching frameworks"):
         SumCost([cost_a, cost_b])
 
 
 def test_sum_cost_rejects_mismatched_devices() -> None:
-    cost_a = _SimpleCost(scale=1.0, device=SupportedDevices.CPU)
-    cost_b = _SimpleCost(scale=2.0, device=SupportedDevices.GPU)
+    cost_a = _SimpleCost(scale=1.0, device=Devices.CPU)
+    cost_b = _SimpleCost(scale=2.0, device=Devices.GPU)
 
     with pytest.raises(ValueError, match="Mismatching devices"):
         SumCost([cost_a, cost_b])

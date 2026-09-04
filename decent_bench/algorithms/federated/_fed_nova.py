@@ -186,7 +186,7 @@ class FedNova(FedAlgorithm):
         for client in participating_clients:
             local_x, cumulative_gradient, a_i = self._compute_local_update(client, server)
             client.x = local_x
-            normalizer_upload = iop.reshape(iop.asarray(a_i), (1,))
+            normalizer_upload = iop.asarray(a_i)
             network.send(sender=client, receiver=server, msg=normalizer_upload, channel=_NORMALIZER_CHANNEL)
             network.send(
                 sender=client,
@@ -267,7 +267,7 @@ class FedNova(FedAlgorithm):
         server_x = iop.copy(server.x)
         cumulative_gradients = [server.message(client, _CUMULATIVE_GRADIENT_CHANNEL) for client in received_clients]
         a_values = [
-            float(iop.astype(server.message(client, _NORMALIZER_CHANNEL), float64).item())
+            float(server.message(client, _NORMALIZER_CHANNEL).item())
             for client in received_clients
         ]
         if any(a_i <= 0 for a_i in a_values):

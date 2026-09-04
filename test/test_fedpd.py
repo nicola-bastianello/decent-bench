@@ -3,16 +3,13 @@ from typing import Any
 import numpy as np
 import pytest
 
-import decent_bench.utils.interoperability as iop
+from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 from decent_bench.agents import Agent
 from decent_bench.algorithms.federated import FedPD
 from decent_bench.costs import Cost, ZeroCost
 from decent_bench.networks import FedNetwork
 from decent_bench.schemes import DropScheme, NoDrops
-from decent_bench.utils.types import (
-    SupportedDevices,
-    SupportedFrameworks,
-)
 
 
 _CENTER_CANDIDATE_CHANNEL = "center_candidate"
@@ -29,12 +26,12 @@ class TrackingCost(Cost):
         return (1,)
 
     @property
-    def framework(self) -> SupportedFrameworks:
-        return SupportedFrameworks.NUMPY
+    def framework(self) -> Frameworks:
+        return Frameworks.NUMPY
 
     @property
-    def device(self) -> SupportedDevices:
-        return SupportedDevices.CPU
+    def device(self) -> Devices:
+        return Devices.CPU
 
     @property
     def m_smooth(self) -> float:
@@ -250,7 +247,7 @@ def test_fedpd_keeps_local_center_when_server_sync_message_is_dropped() -> None:
 
 def test_fedpd_probabilistic_communication_is_reproducible_when_seeded() -> None:
     def run_once() -> tuple[np.ndarray, list[np.ndarray]]:
-        iop.set_seed(123, frameworks=[])
+        iop.set_seed(123)
         clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
         network = FedNetwork(clients=clients)
         algorithm = FedPD(iterations=5, step_size=1.0, penalty=1.0, skip_probability=0.5)
