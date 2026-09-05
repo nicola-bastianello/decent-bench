@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from decent_array import float64
-from decent_array import interoperability as iop
+from decent_array import Array, interoperability as iop
 
 from decent_bench.agents._utils import infer_client_data_size
 from decent_bench.algorithms.utils import initial_states
@@ -267,7 +267,7 @@ class FedNova(FedAlgorithm):
         server_x = iop.copy(server.x)
         cumulative_gradients = [server.message(client, _CUMULATIVE_GRADIENT_CHANNEL) for client in received_clients]
         a_values = [
-            float(server.message(client, _NORMALIZER_CHANNEL).item())
+            float(iop.squeeze(server.message(client, _NORMALIZER_CHANNEL)).item())
             for client in received_clients
         ]
         if any(a_i <= 0 for a_i in a_values):

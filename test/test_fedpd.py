@@ -3,13 +3,14 @@ from typing import Any
 import numpy as np
 import pytest
 
-from decent_array import interoperability as iop
+from decent_array import Array, interoperability as iop
 from decent_array.types import Devices, Frameworks
 from decent_bench.agents import Agent
 from decent_bench.algorithms.federated import FedPD
 from decent_bench.costs import Cost, ZeroCost
 from decent_bench.networks import FedNetwork
 from decent_bench.schemes import DropScheme, NoDrops
+from decent_bench.costs._decorators import autodecorate_cost_method
 
 
 _CENTER_CANDIDATE_CHANNEL = "center_candidate"
@@ -41,19 +42,23 @@ class TrackingCost(Cost):
     def m_cvx(self) -> float:
         return 0.0
 
+    @autodecorate_cost_method(Cost.function)
     def function(self, x: np.ndarray, **kwargs: Any) -> float:
         del x, kwargs
         return 0.0
 
+    @autodecorate_cost_method(Cost.gradient)
     def gradient(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x
         self.gradient_kwargs.append(dict(kwargs))
         return self._gradient.copy()
 
+    @autodecorate_cost_method(Cost.hessian)
     def hessian(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x, kwargs
         return np.zeros((1, 1), dtype=float)
 
+    @autodecorate_cost_method(Cost.proximal)
     def proximal(self, x: np.ndarray, rho: float, **kwargs: Any) -> np.ndarray:
         del rho, kwargs
         return x
@@ -72,15 +77,15 @@ class DropOnCalls(DropScheme):
 def test_fedpd_initializes_primal_dual_and_center_states() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedPD(iterations=1, x0=np.array([2.0]))
+    algorithm = FedPD(iterations=1, x0=Array(np.array([2.0])))
 
     algorithm.initialize(network)
 
-    np.testing.assert_allclose(network.server().x, np.array([2.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([2.0]))
     for client in clients:
-        np.testing.assert_allclose(client.x, np.array([2.0]))
-        np.testing.assert_allclose(client.aux_vars["lambda"], np.array([0.0]))
-        np.testing.assert_allclose(client.aux_vars["center"], np.array([2.0]))
+        np.testing.assert_allclose(client.x.value, np.array([2.0]))
+        np.testing.assert_allclose(client.aux_vars["lambda"].value, np.array([0.0]))
+        np.testing.assert_allclose(client.aux_vars["center"].value, np.array([2.0]))
 
 
 def test_fedpd_p_zero_always_aggregates_and_synchronizes_centers() -> None:
@@ -92,13 +97,13 @@ def test_fedpd_p_zero_always_aggregates_and_synchronizes_centers() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-4.0]))
-    np.testing.assert_allclose(clients[0].x, np.array([-1.0]))
-    np.testing.assert_allclose(clients[1].x, np.array([-3.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["lambda"], np.array([-1.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["lambda"], np.array([-3.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["center"], np.array([-4.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["center"], np.array([-4.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-4.0]))
+    np.testing.assert_allclose(clients[0].x.value, np.array([-1.0]))
+    np.testing.assert_allclose(clients[1].x.value, np.array([-3.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["lambda"].value, np.array([-1.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["lambda"].value, np.array([-3.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["center"].value, np.array([-4.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["center"].value, np.array([-4.0]))
 
 
 def test_fedpd_supports_heterogeneous_local_steps() -> None:
@@ -116,9 +121,9 @@ def test_fedpd_supports_heterogeneous_local_steps() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(clients[0].x, np.array([-0.5]))
-    np.testing.assert_allclose(clients[1].x, np.array([-2.25]))
-    np.testing.assert_allclose(network.server().x, np.array([-2.75]))
+    np.testing.assert_allclose(clients[0].x.value, np.array([-0.5]))
+    np.testing.assert_allclose(clients[1].x.value, np.array([-2.25]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.75]))
 
 
 def test_fedpd_always_selects_all_active_clients() -> None:
@@ -130,9 +135,9 @@ def test_fedpd_always_selects_all_active_clients() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(clients[0].x, np.array([-1.0]))
-    np.testing.assert_allclose(clients[1].x, np.array([-2.0]))
-    np.testing.assert_allclose(clients[2].x, np.array([-3.0]))
+    np.testing.assert_allclose(clients[0].x.value, np.array([-1.0]))
+    np.testing.assert_allclose(clients[1].x.value, np.array([-2.0]))
+    np.testing.assert_allclose(clients[2].x.value, np.array([-3.0]))
 
 
 def test_fedpd_rejects_selection_scheme_argument() -> None:
@@ -149,9 +154,9 @@ def test_fedpd_p_one_always_skips_aggregation() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([0.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["center"], np.array([-2.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["center"], np.array([-6.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([0.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["center"].value, np.array([-2.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["center"].value, np.array([-6.0]))
     assert network.server().messages() == {}
 
 
@@ -160,15 +165,15 @@ def test_fedpd_dual_update_uses_previous_center() -> None:
     client = Agent(TrackingCost(gradient_value=0.0))
     network = FedNetwork(clients=[client])
     algorithm.initialize(network)
-    client.x = np.array([1.0])
-    client.aux_vars["lambda"] = np.array([0.5])
-    client.aux_vars["center"] = np.array([2.0])
+    client.x = Array(np.array([1.0]))
+    client.aux_vars["lambda"] = Array(np.array([0.5]))
+    client.aux_vars["center"] = Array(np.array([2.0]))
 
     algorithm._run_local_updates([client])
 
-    np.testing.assert_allclose(client.x, np.array([1.0]))
-    np.testing.assert_allclose(client.aux_vars["lambda"], np.array([0.0]))
-    np.testing.assert_allclose(client.aux_vars["center"], np.array([1.0]))
+    np.testing.assert_allclose(client.x.value, np.array([1.0]))
+    np.testing.assert_allclose(client.aux_vars["lambda"].value, np.array([0.0]))
+    np.testing.assert_allclose(client.aux_vars["center"].value, np.array([1.0]))
 
 
 def test_fedpd_aggregate_uses_only_received_center_candidates() -> None:
@@ -176,18 +181,18 @@ def test_fedpd_aggregate_uses_only_received_center_candidates() -> None:
     network = FedNetwork(clients=clients)
     algorithm = FedPD(iterations=1)
     algorithm.initialize(network)
-    network.server().x = np.array([10.0])
+    network.server().x = Array(np.array([10.0]))
 
     network.send(
         sender=clients[0],
         receiver=network.server(),
-        msg=np.array([2.0]),
+        msg=Array(np.array([2.0])),
         channel=_CENTER_CANDIDATE_CHANNEL,
     )
 
     algorithm.aggregate(network, clients)
 
-    np.testing.assert_allclose(network.server().x, np.array([2.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([2.0]))
 
 
 def test_fedpd_synchronizes_all_active_clients_after_aggregating_received_candidates() -> None:
@@ -202,9 +207,9 @@ def test_fedpd_synchronizes_all_active_clients_after_aggregating_received_candid
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-6.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["center"], np.array([-6.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["center"], np.array([-6.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-6.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["center"].value, np.array([-6.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["center"].value, np.array([-6.0]))
 
 
 def test_fedpd_does_not_synchronize_when_no_center_candidates_are_received() -> None:
@@ -219,9 +224,9 @@ def test_fedpd_does_not_synchronize_when_no_center_candidates_are_received() -> 
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([0.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["center"], np.array([-2.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["center"], np.array([-6.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([0.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["center"].value, np.array([-2.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["center"].value, np.array([-6.0]))
     assert network.server() not in clients[0].messages(_CENTER_UPDATE_CHANNEL)
     assert network.server() not in clients[1].messages(_CENTER_UPDATE_CHANNEL)
 
@@ -240,9 +245,9 @@ def test_fedpd_keeps_local_center_when_server_sync_message_is_dropped() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-4.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["center"], np.array([-2.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["center"], np.array([-4.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-4.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["center"].value, np.array([-2.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["center"].value, np.array([-4.0]))
 
 
 def test_fedpd_probabilistic_communication_is_reproducible_when_seeded() -> None:
@@ -255,7 +260,7 @@ def test_fedpd_probabilistic_communication_is_reproducible_when_seeded() -> None
         for iteration in range(algorithm.iterations):
             network._step(iteration)  # noqa: SLF001
             algorithm.step(network, iteration)
-        return np.copy(network.server().x), [np.copy(client.aux_vars["center"]) for client in clients]
+        return np.copy(network.server().x.value), [np.copy(client.aux_vars["center"].value) for client in clients]
 
     server_x_1, centers_1 = run_once()
     server_x_2, centers_2 = run_once()

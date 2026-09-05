@@ -3,12 +3,15 @@ from typing import Any
 
 import numpy as np
 
+from decent_array import Array, interoperability as iop
+from decent_array.types import Devices, Frameworks
+
 from decent_bench.agents import Agent
 from decent_bench.algorithms.federated import Scaffold
 from decent_bench.costs import Cost, ZeroCost
 from decent_bench.networks import FedNetwork
 from decent_bench.schemes import ClientSelectionScheme, DropScheme, NoDrops
-from decent_array.types import Devices, Frameworks
+from decent_bench.costs._decorators import autodecorate_cost_method
 
 
 _MODEL_DELTA_CHANNEL = "model_delta"
@@ -40,19 +43,23 @@ class TrackingCost(Cost):
     def m_cvx(self) -> float:
         return 0.0
 
+    @autodecorate_cost_method(Cost.function)
     def function(self, x: np.ndarray, **kwargs: Any) -> float:
         del x, kwargs
         return 0.0
 
+    @autodecorate_cost_method(Cost.gradient)
     def gradient(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x
         self.gradient_kwargs.append(dict(kwargs))
         return self._gradient.copy()
 
+    @autodecorate_cost_method(Cost.hessian)
     def hessian(self, x: np.ndarray, **kwargs: Any) -> np.ndarray:
         del x, kwargs
         return np.zeros((1, 1), dtype=float)
 
+    @autodecorate_cost_method(Cost.proximal)
     def proximal(self, x: np.ndarray, rho: float, **kwargs: Any) -> np.ndarray:
         del rho, kwargs
         return x
@@ -89,16 +96,16 @@ def _run_scaffold_local_update(
     client = Agent(cost)
     server = Agent(ZeroCost(cost.shape))
     client.initialize(
-        x=np.zeros(cost.shape, dtype=float),
-        aux_vars={"c_i": np.array([client_control], dtype=float)},
+        x=Array(np.zeros(cost.shape, dtype=float)),
+        aux_vars={"c_i": Array(np.array([client_control], dtype=float))},
     )
-    server.initialize(x=np.zeros(cost.shape, dtype=float))
+    server.initialize(x=Array(np.zeros(cost.shape, dtype=float)))
     client._received_messages.put(  # noqa: SLF001
         server,
-        np.stack([np.zeros(cost.shape, dtype=float), np.array([server_control], dtype=float)]),
+        iop.stack([Array(np.zeros(cost.shape, dtype=float)), Array(np.array([server_control], dtype=float))]),
     )
     local_x, _, control_delta = algorithm._compute_local_update(client, server)
-    return local_x, client.aux_vars["c_i"], control_delta
+    return local_x.value, client.aux_vars["c_i"].value, control_delta.value
 
 
 def test_scaffold_initializes_control_variates_from_c0() -> None:
@@ -107,17 +114,17 @@ def test_scaffold_initializes_control_variates_from_c0() -> None:
     algorithm = Scaffold(
         iterations=1,
         c0={
-            clients[0]: np.array([1.0]),
-            clients[1]: np.array([3.0]),
-            network.server(): np.array([7.0]),
+            clients[0]: Array(np.array([1.0])),
+            clients[1]: Array(np.array([3.0])),
+            network.server(): Array(np.array([7.0])),
         },
     )
 
     algorithm.initialize(network)
 
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([7.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["c_i"], np.array([1.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["c_i"], np.array([3.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([7.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["c_i"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["c_i"].value, np.array([3.0]))
 
 
 def test_scaffold_infers_server_control_from_client_c0() -> None:
@@ -126,16 +133,16 @@ def test_scaffold_infers_server_control_from_client_c0() -> None:
     algorithm = Scaffold(
         iterations=1,
         c0={
-            clients[0]: np.array([1.0]),
-            clients[1]: np.array([3.0]),
+            clients[0]: Array(np.array([1.0])),
+            clients[1]: Array(np.array([3.0])),
         },
     )
 
     algorithm.initialize(network)
 
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([2.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["c_i"], np.array([1.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["c_i"], np.array([3.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([2.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["c_i"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["c_i"].value, np.array([3.0]))
 
 
 def test_control_variate_correction_changes_the_local_step() -> None:
@@ -167,18 +174,18 @@ def test_scaffold_persists_control_variates_across_rounds() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-2.0]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([2.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["c_i"], np.array([1.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["c_i"], np.array([3.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([2.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["c_i"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["c_i"].value, np.array([3.0]))
 
     network._step(1)  # noqa: SLF001
     algorithm.step(network, 1)
 
-    np.testing.assert_allclose(network.server().x, np.array([-4.0]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([2.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["c_i"], np.array([1.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["c_i"], np.array([3.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-4.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([2.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["c_i"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["c_i"].value, np.array([3.0]))
 
 
 def test_scaffold_uses_uniform_aggregation() -> None:
@@ -189,8 +196,8 @@ def test_scaffold_uses_uniform_aggregation() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-2.0]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([2.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([2.0]))
 
 
 def test_server_step_size_scales_only_the_server_model_update() -> None:
@@ -216,11 +223,11 @@ def test_server_step_size_scales_only_the_server_model_update() -> None:
     full_step_algorithm.step(full_step_network, 0)
     damped_step_algorithm.step(damped_step_network, 0)
 
-    np.testing.assert_allclose(full_step_network.server().x, np.array([-2.0]))
-    np.testing.assert_allclose(damped_step_network.server().x, np.array([-0.5]))
-    np.testing.assert_allclose(damped_step_network.server().x, 0.25 * full_step_network.server().x)
-    np.testing.assert_allclose(full_step_network.server().aux_vars["c"], np.array([2.0]))
-    np.testing.assert_allclose(damped_step_network.server().aux_vars["c"], np.array([2.0]))
+    np.testing.assert_allclose(full_step_network.server().x.value, np.array([-2.0]))
+    np.testing.assert_allclose(damped_step_network.server().x.value, np.array([-0.5]))
+    np.testing.assert_allclose(damped_step_network.server().x.value, 0.25 * full_step_network.server().x.value)
+    np.testing.assert_allclose(full_step_network.server().aux_vars["c"].value, np.array([2.0]))
+    np.testing.assert_allclose(damped_step_network.server().aux_vars["c"].value, np.array([2.0]))
 
 
 def test_scaffold_aggregation_uses_only_received_updates_for_model_and_control_deltas() -> None:
@@ -228,25 +235,25 @@ def test_scaffold_aggregation_uses_only_received_updates_for_model_and_control_d
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
     algorithm.initialize(network)
-    network.server().x = np.array([10.0])
-    network.server().aux_vars["c"] = np.array([5.0])
+    network.server().x = Array(np.array([10.0]))
+    network.server().aux_vars["c"] = Array(np.array([5.0]))
     network.send(
         sender=clients[0],
         receiver=network.server(),
-        msg=np.array([2.0]),
+        msg=Array(np.array([2.0])),
         channel=_MODEL_DELTA_CHANNEL,
     )
     network.send(
         sender=clients[0],
         receiver=network.server(),
-        msg=np.array([4.0]),
+        msg=Array(np.array([4.0])),
         channel=_CONTROL_VARIATE_DELTA_CHANNEL,
     )
 
     algorithm.aggregate(network, clients)
 
-    np.testing.assert_allclose(network.server().x, np.array([12.0]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([7.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([12.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([7.0]))
 
 
 def test_scaffold_partial_participation_persists_control_variates_across_rounds() -> None:
@@ -264,37 +271,37 @@ def test_scaffold_partial_participation_persists_control_variates_across_rounds(
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-1.5]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([1.0]))
-    np.testing.assert_allclose(clients[0].x, np.array([-1.0]))
-    np.testing.assert_allclose(clients[1].x, np.array([-2.0]))
-    np.testing.assert_allclose(clients[2].x, np.array([0.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["c_i"], np.array([1.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["c_i"], np.array([2.0]))
-    np.testing.assert_allclose(clients[2].aux_vars["c_i"], np.array([0.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-1.5]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[0].x.value, np.array([-1.0]))
+    np.testing.assert_allclose(clients[1].x.value, np.array([-2.0]))
+    np.testing.assert_allclose(clients[2].x.value, np.array([0.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["c_i"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["c_i"].value, np.array([2.0]))
+    np.testing.assert_allclose(clients[2].aux_vars["c_i"].value, np.array([0.0]))
 
     network._step(1)  # noqa: SLF001
     algorithm.step(network, 1)
 
-    np.testing.assert_allclose(network.server().x, np.array([-2.5]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([1.0]))
-    np.testing.assert_allclose(clients[0].x, np.array([-1.0]))
-    np.testing.assert_allclose(clients[1].x, np.array([-2.5]))
-    np.testing.assert_allclose(clients[2].x, np.array([0.0]))
-    np.testing.assert_allclose(clients[0].aux_vars["c_i"], np.array([1.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["c_i"], np.array([2.0]))
-    np.testing.assert_allclose(clients[2].aux_vars["c_i"], np.array([0.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.5]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[0].x.value, np.array([-1.0]))
+    np.testing.assert_allclose(clients[1].x.value, np.array([-2.5]))
+    np.testing.assert_allclose(clients[2].x.value, np.array([0.0]))
+    np.testing.assert_allclose(clients[0].aux_vars["c_i"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["c_i"].value, np.array([2.0]))
+    np.testing.assert_allclose(clients[2].aux_vars["c_i"].value, np.array([0.0]))
     network._step(2)  # noqa: SLF001
     algorithm.step(network, 2)
 
-    np.testing.assert_allclose(network.server().x, np.array([-6.5]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([2.0]))
-    np.testing.assert_allclose(clients[0].x, np.array([-1.0]))
-    np.testing.assert_allclose(clients[1].x, np.array([-2.5]))
-    np.testing.assert_allclose(clients[2].x, np.array([-6.5]))
-    np.testing.assert_allclose(clients[0].aux_vars["c_i"], np.array([1.0]))
-    np.testing.assert_allclose(clients[1].aux_vars["c_i"], np.array([2.0]))
-    np.testing.assert_allclose(clients[2].aux_vars["c_i"], np.array([3.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-6.5]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([2.0]))
+    np.testing.assert_allclose(clients[0].x.value, np.array([-1.0]))
+    np.testing.assert_allclose(clients[1].x.value, np.array([-2.5]))
+    np.testing.assert_allclose(clients[2].x.value, np.array([-6.5]))
+    np.testing.assert_allclose(clients[0].aux_vars["c_i"].value, np.array([1.0]))
+    np.testing.assert_allclose(clients[1].aux_vars["c_i"].value, np.array([2.0]))
+    np.testing.assert_allclose(clients[2].aux_vars["c_i"].value, np.array([3.0]))
 
 
 def test_scaffold_skips_participation_when_broadcast_is_dropped() -> None:
@@ -308,20 +315,20 @@ def test_scaffold_skips_participation_when_broadcast_is_dropped() -> None:
     )
     algorithm.initialize(network)
 
-    server.aux_vars["c"] = np.array([2.0])
+    server.aux_vars["c"] = Array(np.array([2.0]))
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-2.0]))
-    np.testing.assert_allclose(client.aux_vars["c_i"], np.array([0.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.0]))
+    np.testing.assert_allclose(client.aux_vars["c_i"].value, np.array([0.0]))
 
-    server.aux_vars["c"] = np.array([5.0])
+    server.aux_vars["c"] = Array(np.array([5.0]))
     network._step(1)  # noqa: SLF001
     algorithm.step(network, 1)
 
-    np.testing.assert_allclose(network.server().x, np.array([-2.0]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([5.0]))
-    np.testing.assert_allclose(client.aux_vars["c_i"], np.array([0.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([5.0]))
+    np.testing.assert_allclose(client.aux_vars["c_i"].value, np.array([0.0]))
 
 
 def test_scaffold_dropped_server_broadcasts_do_not_make_clients_participate() -> None:
@@ -337,11 +344,11 @@ def test_scaffold_dropped_server_broadcasts_do_not_make_clients_participate() ->
 
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
-    np.testing.assert_allclose(network.server().x, np.array([-2.0]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([2.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([2.0]))
 
     network._step(1)  # noqa: SLF001
     algorithm.step(network, 1)
 
-    np.testing.assert_allclose(network.server().x, np.array([-4.0]))
-    np.testing.assert_allclose(network.server().aux_vars["c"], np.array([2.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-4.0]))
+    np.testing.assert_allclose(network.server().aux_vars["c"].value, np.array([2.0]))

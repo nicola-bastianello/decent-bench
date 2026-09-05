@@ -925,7 +925,7 @@ def test_metrics_unavailable_without_empirical_risk_cost() -> None:  # noqa: D10
 def test_classification_metrics_unavailable_with_float_targets() -> None:  # noqa: D103
     lr_cost = LinearRegressionCost([(Array(np.array([1.0])), Array(np.array([1.0])))])
     network = SimpleNamespace(agents=lambda: [SimpleNamespace(cost=lr_cost)])
-    problem = SimpleNamespace(test_data=[(np.array([0.0]), 0.1)], network=network)
+    problem = SimpleNamespace(test_data=[(Array(np.array([0.0])), 0.1)], network=network)
 
     for metric in [Accuracy(), Precision(), Recall()]:
         available, reason = metric.is_available(problem)

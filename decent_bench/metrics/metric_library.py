@@ -428,7 +428,7 @@ class Accuracy(Metric):
         if not all(isinstance(a.cost, EmpiricalRiskCost) for a in problem.network.agents()):
             return False, "accuracy only applies if all agents have EmpiricalRiskCost"
         _, test_y = utils._split_dataset(problem.test_data)  # type: ignore[arg-type] # noqa: SLF001
-        if test_y.dtype.kind not in {"i", "u"}:
+        if test_y[0].dtype.kind not in {"i", "u"}:
             return False, f"accuracy only applies for integer targets, dtype {test_y.dtype} found"
         return True, None
 

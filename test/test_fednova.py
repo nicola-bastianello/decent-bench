@@ -3,12 +3,15 @@ from typing import Any
 import numpy as np
 import pytest
 
+from decent_array.types import Devices, Frameworks
+from decent_array import Array, interoperability as iop
+
 from decent_bench.agents import Agent
 from decent_bench.algorithms.federated import FedAvg, FedNova
-from decent_bench.costs import EmpiricalRiskCost
+from decent_bench.costs import Cost, EmpiricalRiskCost
 from decent_bench.networks import FedNetwork
 from decent_bench.schemes import DropScheme, NoDrops
-from decent_array.types import Devices, Frameworks
+from decent_bench.costs._decorators import autodecorate_cost_method
 
 
 _NORMALIZER_CHANNEL = "normalizer"
@@ -53,10 +56,12 @@ class TrackingCost(EmpiricalRiskCost):
     def dataset(self) -> list[tuple[np.ndarray, np.ndarray]]:
         return self._dataset
 
+    @autodecorate_cost_method(EmpiricalRiskCost.predict)
     def predict(self, x: np.ndarray, data: list[np.ndarray]) -> np.ndarray:
         del x
         return np.zeros(len(data), dtype=float)
 
+    @autodecorate_cost_method(Cost.function)
     def function(self, x: np.ndarray, indices: Any = "batch", **kwargs: Any) -> float:  # noqa: ANN401
         del x, kwargs
         self._sample_batch_indices(indices)
@@ -66,16 +71,19 @@ class TrackingCost(EmpiricalRiskCost):
         batch_indices = self._sample_batch_indices(indices)
         return [self._dataset[index] for index in batch_indices]
 
+    @autodecorate_cost_method(Cost.gradient)
     def gradient(self, x: np.ndarray, indices: Any = "batch", **kwargs: Any) -> np.ndarray:  # noqa: ANN401
         del x, kwargs
         self._sample_batch_indices(indices)
         return self._gradient.copy()
 
+    @autodecorate_cost_method(Cost.hessian)
     def hessian(self, x: np.ndarray, indices: Any = "batch", **kwargs: Any) -> np.ndarray:  # noqa: ANN401
         del x, kwargs
         self._sample_batch_indices(indices)
         return np.zeros((1, 1), dtype=float)
 
+    @autodecorate_cost_method(Cost.proximal)
     def proximal(self, x: np.ndarray, rho: float, **kwargs: Any) -> np.ndarray:
         del rho, kwargs
         return x
@@ -107,7 +115,7 @@ def _run_fed_algorithm(network: FedNetwork, algorithm: FedAvg | FedNova) -> np.n
     for iteration in range(algorithm.iterations):
         network._step(iteration)  # noqa: SLF001
         algorithm.step(network, iteration)
-    return np.copy(network.server().x)
+    return np.copy(network.server().x.value)
 
 
 def _expected_single_client_fednova(
@@ -174,7 +182,7 @@ def test_fednova_supports_heterogeneous_local_steps() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-4.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-4.0]))
 
 
 def test_plain_fednova_equals_fedavg_when_local_steps_and_aggregation_weights_match() -> None:
@@ -336,7 +344,7 @@ def test_fednova_uses_data_proportional_client_weights() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-2.5]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-2.5]))
 
 
 def test_fednova_uploads_normalizer_then_cumulative_gradient() -> None:
@@ -351,10 +359,10 @@ def test_fednova_uploads_normalizer_then_cumulative_gradient() -> None:
     participating_clients = algorithm._clients_with_server_broadcast(network, selected_clients)
     algorithm._run_local_updates(network, participating_clients)
 
-    np.testing.assert_allclose(network.server().message(clients[0], _NORMALIZER_CHANNEL), np.array([2.0]))
-    np.testing.assert_allclose(network.server().message(clients[1], _NORMALIZER_CHANNEL), np.array([1.0]))
-    np.testing.assert_allclose(network.server().message(clients[0], _CUMULATIVE_GRADIENT_CHANNEL), np.array([4.0]))
-    np.testing.assert_allclose(network.server().message(clients[1], _CUMULATIVE_GRADIENT_CHANNEL), np.array([4.0]))
+    np.testing.assert_allclose(network.server().message(clients[0], _NORMALIZER_CHANNEL).value, np.array([2.0]))
+    np.testing.assert_allclose(network.server().message(clients[1], _NORMALIZER_CHANNEL).value, np.array([1.0]))
+    np.testing.assert_allclose(network.server().message(clients[0], _CUMULATIVE_GRADIENT_CHANNEL).value, np.array([4.0]))
+    np.testing.assert_allclose(network.server().message(clients[1], _CUMULATIVE_GRADIENT_CHANNEL).value, np.array([4.0]))
 
 
 def test_fednova_stores_client_sample_counts_on_server_initialize() -> None:
@@ -385,7 +393,7 @@ def test_fednova_renormalizes_client_weights_over_received_subset() -> None:
 
     algorithm.aggregate(network, participating_clients)
 
-    np.testing.assert_allclose(network.server().x, np.array([-1.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-1.0]))
 
 
 def test_fednova_aggregate_rejects_non_positive_normalizer() -> None:
@@ -402,7 +410,7 @@ def test_fednova_aggregate_rejects_non_positive_normalizer() -> None:
     network.send(
         sender=clients[0],
         receiver=network.server(),
-        msg=np.array([0.0]),
+        msg=iop.zeros(1),
         channel=_NORMALIZER_CHANNEL,
     )
 
@@ -424,7 +432,7 @@ def test_fednova_skips_round_when_all_normalizer_uploads_are_dropped() -> None:
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([0.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([0.0]))
     assert network.server().messages(_NORMALIZER_CHANNEL) == {}
     assert set(network.server().messages(_CUMULATIVE_GRADIENT_CHANNEL)) == set(clients)
 
@@ -444,7 +452,7 @@ def test_fednova_uses_only_clients_with_both_uploads(dropped_calls: set[int]) ->
     network._step(0)  # noqa: SLF001
     algorithm.step(network, 0)
 
-    np.testing.assert_allclose(network.server().x, np.array([-10.0]))
+    np.testing.assert_allclose(network.server().x.value, np.array([-10.0]))
 
 
 def test_fednova_differs_from_fedavg_when_local_steps_are_heterogeneous() -> None:
@@ -467,9 +475,9 @@ def test_fednova_differs_from_fedavg_when_local_steps_are_heterogeneous() -> Non
     fednova.step(fednova_network, 0)
     fedavg.step(fedavg_network, 0)
 
-    np.testing.assert_allclose(fednova_network.server().x, np.array([-4.0]))
-    np.testing.assert_allclose(fedavg_network.server().x, np.array([-2.0]))
-    assert not np.allclose(fednova_network.server().x, fedavg_network.server().x)
+    np.testing.assert_allclose(fednova_network.server().x.value, np.array([-4.0]))
+    np.testing.assert_allclose(fedavg_network.server().x.value, np.array([-2.0]))
+    assert not np.allclose(fednova_network.server().x.value, fedavg_network.server().x.value)
 
 
 def test_fednova_differs_from_uniform_weighting_when_client_sizes_differ() -> None:
@@ -492,9 +500,9 @@ def test_fednova_differs_from_uniform_weighting_when_client_sizes_differ() -> No
     fednova.step(fednova_network, 0)
     fedavg.step(fedavg_network, 0)
 
-    np.testing.assert_allclose(fednova_network.server().x, np.array([-6.25]))
-    np.testing.assert_allclose(fedavg_network.server().x, np.array([-2.0]))
-    assert not np.allclose(fednova_network.server().x, fedavg_network.server().x)
+    np.testing.assert_allclose(fednova_network.server().x.value, np.array([-6.25]))
+    np.testing.assert_allclose(fedavg_network.server().x.value, np.array([-2.0]))
+    assert not np.allclose(fednova_network.server().x.value, fedavg_network.server().x.value)
 
 
 def test_fednova_rejects_sequence_num_local_steps() -> None:

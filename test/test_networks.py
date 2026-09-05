@@ -42,13 +42,8 @@ class AddNoise(NoiseScheme):
     def __init__(self, offset: float):
         self.offset = offset
 
-    def make_noise(
-        self,
-        shape: tuple[int, ...],
-        framework: Frameworks,
-        device: Devices,
-    ) -> Array:  # noqa: D102
-        return iop.to_array(np.full(shape, self.offset), framework=framework, device=device)
+    def make_noise(self, shape: tuple[int, ...]) -> Array:  # noqa: D102
+        return Array(np.full(shape, self.offset))
 
 
 class FixedDrop(DropScheme):
@@ -319,7 +314,7 @@ def test_step_clears_messages() -> None:
         graph=nx.Graph([(0, 1)]),
         agents=[sender, receiver],
     )
-    msg = iop.to_array([1.0, -1.0], framework=sender.cost.framework, device=sender.cost.device)
+    msg = Array(np.asarray([1.0, -1.0]))
 
     net.send(sender=sender, receiver=receiver, msg=msg)
     assert sender in receiver.messages()
@@ -352,7 +347,7 @@ def test_send_applies_drop_compression_and_noise_schemes() -> None:
             receiver: NoDrops(),
         },
     )
-    msg = iop.to_array([1.0, 2.0], framework=sender.cost.framework, device=sender.cost.device)
+    msg = Array(np.asarray([1.0, 2.0]))
 
     net.send(sender=sender, receiver=receiver, msg=msg)
     np_received = iop.to_numpy(receiver.message(sender))
