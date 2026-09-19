@@ -272,7 +272,7 @@ class PyTorchCost(EmpiricalRiskCost):
         return torch.cat(params).to(self._pytorch_device)
 
     @autodecorate_cost_method(EmpiricalRiskCost.predict)
-    def predict(self, x: torch.Tensor, data: list[torch.Tensor]) -> list[torch.Tensor]:
+    def predict(self, x: torch.Tensor, data: list[torch.Tensor]) -> torch.Tensor:
         """
         Make predictions at x on the given data.
 
@@ -292,21 +292,16 @@ class PyTorchCost(EmpiricalRiskCost):
             self.model.eval()
 
         with torch.no_grad():
-            if isinstance(data, list):
-                inputs = torch.stack(data)
-            elif isinstance(data, torch.Tensor):
-                inputs = data
-            else:
-                raise TypeError(f"Data must be a list of torch.Tensor or a single torch.Tensor, got {type(data)}.")
+            if not isinstance(data, list):
+                raise TypeError(f"Data must be a list of torch.Tensor {type(data)}.")
+            inputs = torch.stack(data)
 
             final_outputs: list[torch.Tensor] = []
             for i in range(0, inputs.shape[0], self._max_batch_size):
-                inputs_chunk = inputs[i : i + self._max_batch_size].to(self._pytorch_device)
-                outputs: torch.Tensor = self.model(inputs_chunk)
-                outputs = self.final_activation(outputs)
-                final_outputs.extend(outputs.detach().cpu().tolist())
+                outputs = self.model(inputs[i : i + self._max_batch_size].to(self._pytorch_device))
+                final_outputs.append(self.final_activation(outputs).detach())
 
-            return final_outputs
+            return final_outputs[0] if len(final_outputs) == 1 else torch.cat(final_outputs, dim=0)
 
     @autodecorate_cost_method(EmpiricalRiskCost.function)
     def function(self, x: torch.Tensor, indices: EmpiricalRiskIndices = "batch") -> float:

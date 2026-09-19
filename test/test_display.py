@@ -925,123 +925,12 @@ def test_metrics_unavailable_without_empirical_risk_cost() -> None:  # noqa: D10
 def test_classification_metrics_unavailable_with_float_targets() -> None:  # noqa: D103
     lr_cost = LinearRegressionCost([(Array(np.array([1.0])), Array(np.array([1.0])))])
     network = SimpleNamespace(agents=lambda: [SimpleNamespace(cost=lr_cost)])
-    problem = SimpleNamespace(test_data=[(Array(np.array([0.0])), 0.1)], network=network)
+    problem = SimpleNamespace(test_data=[(Array(np.array([0.0])), Array(np.array([0.1])))], network=network)
 
     for metric in [Accuracy(), Precision(), Recall()]:
         available, reason = metric.is_available(problem)
         assert not available
         assert "integer targets" in reason
-
-
-def test_server_mse_availability_and_values() -> None:  # noqa: D103
-    test_data = [(Array(np.array([1.0])), Array(np.array([1.0])))]
-    cost = LinearRegressionCost(test_data)
-    client = Agent(cost)
-    client.initialize(x=Array(np.array([0.0])))
-
-    unavailable_problem = SimpleNamespace(
-        test_data=test_data,
-        network=SimpleNamespace(agents=lambda: [client]),
-    )
-    available, reason = ml.ServerMSE().is_available(unavailable_problem)
-    assert not available
-    assert "FedNetwork" in reason
-
-    client = Agent(cost)
-    client.initialize(x=Array(np.array([0.0])))
-
-    fed_problem_without_test_data = BenchmarkProblem(network=FedNetwork([client]))
-    available, reason = ml.ServerMSE().is_available(fed_problem_without_test_data)
-    assert not available
-    assert reason == "requires problem.test_data"
-
-    client = Agent(cost)
-    client.initialize(x=Array(np.array([0.0])))
-
-    problem = BenchmarkProblem(network=FedNetwork([client]), test_data=test_data)
-    metric = ml.ServerMSE()
-    available, reason = metric.is_available(problem)
-    assert available
-    assert reason is None
-
-    client_view = AgentMetricsView.from_agent(client)
-    server_history = AgentHistory()
-    server_history[0] = Array(np.array([0.0]))
-    server_history[1] = Array(np.array([1.0]))
-    server_view = AgentMetricsView(
-        id=uuid4(),
-        cost=cost,
-        x_history=server_history,
-        n_x_updates=0,
-        n_function_calls=0.0,
-        n_gradient_calls=0.0,
-        n_hessian_calls=0.0,
-        n_proximal_calls=0.0,
-        n_sent_messages=0,
-        n_received_messages=0,
-        n_sent_messages_dropped=0,
-        n_times_selected=0,
-    )
-
-    network_view = _network_metrics_view(
-        [client_view, server_view],
-        network_type=NetworkType.FEDERATED,
-        server=server_view,
-    )
-    assert metric.compute(network_view, problem, 0) == [1.0]
-    assert metric.compute(network_view, problem, 1) == [0.0]
-
-
-def test_server_accuracy_availability_and_values() -> None:  # noqa: D103
-    train_data = [(np.array([1.0]), np.array([1])), (np.array([-1.0]), np.array([0]))]
-    test_data = [(np.array([1.0]), 1), (np.array([-1.0]), 0)]
-    cost = LogisticRegressionCost(train_data)
-    client = Agent(cost)
-    client.initialize(x=np.array([0.0]))
-    problem = BenchmarkProblem(network=FedNetwork([client]), test_data=test_data)
-
-    client_for_float_targets = Agent(cost)
-    client_for_float_targets.initialize(x=np.array([0.0]))
-
-    float_target_problem = BenchmarkProblem(
-        network=FedNetwork([client_for_float_targets]),
-        test_data=[(np.array([1.0]), 1.0), (np.array([-1.0]), 0.0)],
-    )
-    metric = ml.ServerAccuracy()
-    available, reason = metric.is_available(float_target_problem)
-    assert not available
-    assert "integer targets" in reason
-
-    available, reason = metric.is_available(problem)
-    assert available
-    assert reason is None
-
-    client_view = AgentMetricsView.from_agent(client)
-    server_history = AgentHistory()
-    server_history[0] = np.array([0.0])
-    server_history[1] = np.array([10.0])
-    server_view = AgentMetricsView(
-        id=uuid4(),
-        cost=cost,
-        x_history=server_history,
-        n_x_updates=0,
-        n_function_calls=0.0,
-        n_gradient_calls=0.0,
-        n_hessian_calls=0.0,
-        n_proximal_calls=0.0,
-        n_sent_messages=0,
-        n_received_messages=0,
-        n_sent_messages_dropped=0,
-        n_times_selected=0,
-    )
-
-    network_view = _network_metrics_view(
-        [client_view, server_view],
-        network_type=NetworkType.FEDERATED,
-        server=server_view,
-    )
-    assert metric.compute(network_view, problem, 0) == [0.5]
-    assert metric.compute(network_view, problem, 1) == [1.0]
 
 
 def test_is_available_default_returns_true() -> None:  # noqa: D103

@@ -1,15 +1,17 @@
 """Collection of pre-defined table and plot metrics."""
 
+import operator
+from functools import reduce
 from typing import TYPE_CHECKING
 
 import numpy as np
 from decent_array import interoperability as iop
+from decent_array.types._dtypes import _SIGNED_INT_DTYPES, _UNSIGNED_INT_DTYPES
 
 from decent_bench.costs import Cost, EmpiricalRiskCost
 from decent_bench.metrics import utils
 from decent_bench.metrics._metric import Metric
 from decent_bench.metrics._metrics_view import NetworkMetricsView
-from decent_bench.networks import FedNetwork
 from decent_bench.utils._tags import Tag, tags
 
 if TYPE_CHECKING:
@@ -42,9 +44,7 @@ class Regret(Metric):
         self,
         problem: "BenchmarkProblem",
     ) -> tuple[bool, str | None]:
-        if getattr(problem, "x_optimal", None) is None:
-            return False, "requires problem.x_optimal"
-        return True, None
+        return utils._requires_x_optimal(problem)  # noqa: SLF001
 
     def compute(  # noqa: D102
         self,
@@ -52,7 +52,14 @@ class Regret(Metric):
         problem: "BenchmarkProblem",
         iteration: int,
     ) -> list[float]:
-        return [utils._regret(network.agents(), problem, iteration)]  # noqa: SLF001
+        x_opt = problem.x_optimal
+        x_mean = utils.x_mean(tuple(network.agents()), iteration)
+        optimal_cost, actual_cost = 0.0, 0.0
+        for a in network.agents():
+            kwargs = {"indices": "all"} if isinstance(a.cost, EmpiricalRiskCost) else {}
+            optimal_cost += a.cost.function(x_opt, **kwargs)  # type: ignore[arg-type]
+            actual_cost += a.cost.function(x_mean, **kwargs)
+        return [(actual_cost - optimal_cost) / len(network.agents())]
 
 
 @tags(Tag.METRIC)
@@ -80,7 +87,13 @@ class GradientNorm(Metric):
         _: "BenchmarkProblem",
         iteration: int,
     ) -> list[float]:
-        return [utils._gradient_norm(network.agents(), iteration)]  # noqa: SLF001
+        x_mean = utils.x_mean(tuple(network.agents()), iteration)
+        gradients = []
+        for a in network.agents():
+            kwargs = {"indices": "all"} if isinstance(a.cost, EmpiricalRiskCost) else {}
+            gradients.append(a.cost.gradient(x_mean, **kwargs))
+        grad_avg = reduce(operator.add, gradients) / len(gradients)
+        return [float(iop.norm(grad_avg))]
 
 
 @tags(Tag.METRIC)
@@ -114,9 +127,7 @@ class XError(Metric):
         self,
         problem: "BenchmarkProblem",
     ) -> tuple[bool, str | None]:
-        if getattr(problem, "x_optimal", None) is None:
-            return False, "requires problem.x_optimal"
-        return True, None
+        return utils._requires_x_optimal(problem)  # noqa: SLF001
 
     def compute(  # noqa: D102
         self,
@@ -124,7 +135,8 @@ class XError(Metric):
         problem: "BenchmarkProblem",
         iteration: int,
     ) -> list[float]:
-        return [utils._x_error(network.agents(), problem, iteration)]  # noqa: SLF001
+        x_mean = utils.x_mean(tuple(network.agents()), iteration)
+        return [float(iop.norm(x_mean - problem.x_optimal))]  # type: ignore[operator]
 
 
 @tags(Tag.METRIC)
@@ -423,14 +435,12 @@ class Accuracy(Metric):
         self,
         problem: "BenchmarkProblem",
     ) -> tuple[bool, str | None]:
-        if getattr(problem, "test_data", None) is None:
-            return False, "requires problem.test_data"
-        if not all(isinstance(a.cost, EmpiricalRiskCost) for a in problem.network.agents()):
-            return False, "accuracy only applies if all agents have EmpiricalRiskCost"
-        _, test_y = utils._split_dataset(problem.test_data)  # type: ignore[arg-type] # noqa: SLF001
-        if test_y[0].dtype.kind not in {"i", "u"}:
-            return False, f"accuracy only applies for integer targets, dtype {test_y.dtype} found"
-        return True, None
+        return utils._check_availability((utils._requires_test_data,  # noqa: SLF001
+                                          utils._requires_empirical_cost,  # noqa: SLF001
+                                          utils._requires_integer_targets,  # noqa: SLF001
+                                        ),
+                                        problem
+                                        )
 
     def compute(  # noqa: D102
         self,
@@ -478,11 +488,11 @@ class MSE(Metric):
         self,
         problem: "BenchmarkProblem",
     ) -> tuple[bool, str | None]:
-        if getattr(problem, "test_data", None) is None:
-            return False, "requires problem.test_data"
-        if not all(isinstance(a.cost, EmpiricalRiskCost) for a in problem.network.agents()):
-            return False, "MSE only applies if all agents have EmpiricalRiskCost"
-        return True, None
+        return utils._check_availability((utils._requires_test_data,  # noqa: SLF001
+                                          utils._requires_empirical_cost,  # noqa: SLF001
+                                        ),
+                                        problem
+                                        )
 
     def compute(  # noqa: D102
         self,
@@ -532,14 +542,12 @@ class Precision(Metric):
         self,
         problem: "BenchmarkProblem",
     ) -> tuple[bool, str | None]:
-        if getattr(problem, "test_data", None) is None:
-            return False, "requires problem.test_data"
-        if not all(isinstance(a.cost, EmpiricalRiskCost) for a in problem.network.agents()):
-            return False, "precision only applies if all agents have EmpiricalRiskCost"
-        _, test_y = utils._split_dataset(problem.test_data)  # type: ignore[arg-type] # noqa: SLF001
-        if test_y.dtype.kind not in {"i", "u"}:
-            return False, f"precision only applies for integer targets, dtype {test_y.dtype} found"
-        return True, None
+        return utils._check_availability((utils._requires_test_data,  # noqa: SLF001
+                                          utils._requires_empirical_cost,  # noqa: SLF001
+                                          utils._requires_integer_targets,  # noqa: SLF001
+                                        ),
+                                        problem
+                                        )
 
     def compute(  # noqa: D102
         self,
@@ -589,14 +597,12 @@ class Recall(Metric):
         self,
         problem: "BenchmarkProblem",
     ) -> tuple[bool, str | None]:
-        if getattr(problem, "test_data", None) is None:
-            return False, "requires problem.test_data"
-        if not all(isinstance(a.cost, EmpiricalRiskCost) for a in problem.network.agents()):
-            return False, "recall only applies if all agents have EmpiricalRiskCost"
-        _, test_y = utils._split_dataset(problem.test_data)  # type: ignore[arg-type]  # noqa: SLF001
-        if test_y.dtype.kind not in {"i", "u"}:
-            return False, f"recall only applies for integer targets, dtype {test_y.dtype} found"
-        return True, None
+        return utils._check_availability((utils._requires_test_data,  # noqa: SLF001
+                                          utils._requires_empirical_cost,  # noqa: SLF001
+                                          utils._requires_integer_targets,  # noqa: SLF001
+                                        ),
+                                        problem
+                                        )
 
     def compute(  # noqa: D102
         self,
@@ -631,13 +637,12 @@ class Loss(Metric):
         _: "BenchmarkProblem",
         iteration: int,
     ) -> list[float]:
-        return utils._losses(network.agents(), iteration)  # noqa: SLF001
-
-
-def _requires_fednetwork(problem: "BenchmarkProblem", metric_name: str) -> tuple[bool, str | None]:
-    if not isinstance(problem.network, FedNetwork):
-        return False, f"{metric_name} only applies to FedNetwork"
-    return True, None
+        return [
+                agent.cost.function(agent.x_history[iteration], indices="all")
+                if isinstance(agent.cost, EmpiricalRiskCost)
+                else agent.cost.function(agent.x_history[iteration])
+                for agent in network.agents()
+            ]
 
 
 def _server_metric_cost(network: NetworkMetricsView, metric_name: str) -> Cost:
@@ -676,7 +681,7 @@ class ClientDriftFromServer(Metric):
         self,
         problem: "BenchmarkProblem",
     ) -> tuple[bool, str | None]:
-        return _requires_fednetwork(problem, self.description)
+        return utils._requires_fednetwork(problem)  # noqa: SLF001
 
     def compute(  # noqa: D102
         self,
@@ -684,7 +689,8 @@ class ClientDriftFromServer(Metric):
         problem: "BenchmarkProblem",  # noqa: ARG002
         iteration: int,
     ) -> list[float]:
-        return utils._drifts(network.clients(), network.server(), iteration)  # noqa: SLF001
+        x_server = network.server().x_history[iteration]
+        return [float(iop.norm(a.x_history[iteration] - x_server)) for a in network.clients()]
 
 
 @tags(Tag.METRIC)
@@ -706,7 +712,7 @@ class FractionSelectedClients(Metric):
         self,
         problem: "BenchmarkProblem",
     ) -> tuple[bool, str | None]:
-        return _requires_fednetwork(problem, self.description)
+        return utils._requires_fednetwork(problem)  # noqa: SLF001
 
     def compute(  # noqa: D102
         self,
@@ -719,93 +725,6 @@ class FractionSelectedClients(Metric):
         if n_rounds == 0 or not agent_views:
             return [np.nan]
         return [sum(agent.n_times_selected for agent in agent_views) / (n_rounds * len(agent_views))]
-
-
-@tags(Tag.METRIC)
-class ServerMSE(Metric):
-    r"""
-    Mean squared error of the server model's predictions.
-
-    Table:
-        Mean squared error of the final server x.
-
-    Plot:
-        Server MSE (y-axis) per iteration (x-axis).
-
-    Note:
-        Available only for :class:`~decent_bench.networks.FedNetwork` with ``problem.test_data`` and empirical-risk
-        client costs.
-
-    """
-
-    description: str = "server mse"
-
-    def is_available(  # noqa: D102
-        self,
-        problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
-        available, reason = _requires_fednetwork(problem, self.description)
-        if not available:
-            return False, reason
-        if getattr(problem, "test_data", None) is None:
-            return False, "requires problem.test_data"
-        if not all(isinstance(a.cost, EmpiricalRiskCost) for a in problem.network.agents()):
-            return False, "server MSE only applies if all clients have EmpiricalRiskCost"
-        return True, None
-
-    def compute(  # noqa: D102
-        self,
-        network: NetworkMetricsView,
-        problem: "BenchmarkProblem",
-        iteration: int,
-    ) -> list[float]:
-        cost = _server_metric_cost(network, self.description)
-        return [utils._mse_at_x(cost, network.server().x_history[iteration], problem)]  # noqa: SLF001
-
-
-@tags(Tag.METRIC)
-class ServerAccuracy(Metric):
-    r"""
-    Accuracy of the server model's predictions.
-
-    Table:
-        Accuracy of the final server x.
-
-    Plot:
-        Server accuracy (y-axis) per iteration (x-axis).
-
-    Note:
-        Available only for :class:`~decent_bench.networks.FedNetwork` with ``problem.test_data``, empirical-risk
-        client costs, and integer-valued targets.
-
-    """
-
-    description: str = "server accuracy"
-
-    def is_available(  # noqa: D102
-        self,
-        problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
-        available, reason = _requires_fednetwork(problem, self.description)
-        if not available:
-            return False, reason
-        if getattr(problem, "test_data", None) is None:
-            return False, "requires problem.test_data"
-        if not all(isinstance(a.cost, EmpiricalRiskCost) for a in problem.network.agents()):
-            return False, "server accuracy only applies if all clients have EmpiricalRiskCost"
-        _, test_y = utils._split_dataset(problem.test_data)  # type: ignore[arg-type]  # noqa: SLF001
-        if test_y.dtype.kind not in {"i", "u"}:
-            return False, f"server accuracy only applies for integer targets, dtype {test_y.dtype} found"
-        return True, None
-
-    def compute(  # noqa: D102
-        self,
-        network: NetworkMetricsView,
-        problem: "BenchmarkProblem",
-        iteration: int,
-    ) -> list[float]:
-        cost = _server_metric_cost(network, self.description)
-        return [utils._accuracy_at_x(cost, network.server().x_history[iteration], problem)]  # noqa: SLF001
 
 
 _BASE_TABLE_METRICS: list[Metric] = [
@@ -918,49 +837,12 @@ _FEDERATED_PLOT_METRICS: list[Metric] = [
 :meta hide-value:
 """
 
-_FEDERATED_REGRESSION_TABLE_METRICS: list[Metric] = [
-    ServerMSE(x_log=False, y_log=True),
-]
-"""
-- :class:`ServerMSE`
-
-:meta hide-value:
-"""
-
-_FEDERATED_REGRESSION_PLOT_METRICS: list[Metric] = [
-    ServerMSE(x_log=False, y_log=True),
-]
-"""
-- :class:`ServerMSE` (semi-log)
-
-:meta hide-value:
-"""
-
-_FEDERATED_CLASSIFICATION_TABLE_METRICS: list[Metric] = [
-    ServerAccuracy(fmt=".2%", x_log=False, y_log=False),
-]
-"""
-- :class:`ServerAccuracy` - with percentage format
-
-:meta hide-value:
-"""
-
-_FEDERATED_CLASSIFICATION_PLOT_METRICS: list[Metric] = [
-    ServerAccuracy(fmt=".2%", x_log=False, y_log=False),
-]
-"""
-- :class:`ServerAccuracy` (linear)
-
-:meta hide-value:
-"""
 
 _DEFAULT_TABLE_METRICS: list[Metric] = [
     *_BASE_TABLE_METRICS,
     *_REGRESSION_TABLE_METRICS,
     *_CLASSIFICATION_TABLE_METRICS,
     *_FEDERATED_TABLE_METRICS,
-    *_FEDERATED_REGRESSION_TABLE_METRICS,
-    *_FEDERATED_CLASSIFICATION_TABLE_METRICS,
 ]
 
 _DEFAULT_PLOT_METRICS: list[Metric] = [
@@ -968,6 +850,4 @@ _DEFAULT_PLOT_METRICS: list[Metric] = [
     *_REGRESSION_PLOT_METRICS,
     *_CLASSIFICATION_PLOT_METRICS,
     *_FEDERATED_PLOT_METRICS,
-    *_FEDERATED_REGRESSION_PLOT_METRICS,
-    *_FEDERATED_CLASSIFICATION_PLOT_METRICS,
 ]

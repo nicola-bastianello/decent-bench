@@ -135,8 +135,7 @@ def test_max_batch_size_does_not_change_predict_outputs(device: Devices) -> None
     pred_b = cost_b.predict(x, data)
 
     assert len(pred_a) == len(pred_b)
-    for pa, pb in zip(pred_a, pred_b, strict=True):
-        assert pa == pytest.approx(pb, rel=1e-6, abs=1e-7)
+    torch.testing.assert_close(pred_a, pred_b)
 
 
 @backends

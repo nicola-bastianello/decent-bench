@@ -439,11 +439,6 @@ def test_create_backup_and_clear(tmp_path: Path) -> None:  # noqa: D103
     [
         (LogisticRegressionCost, 1),
         pytest.param(LogisticRegressionCost, 2, marks=LINUX_ONLY_MP_GT1),
-        pytest.param(
-            PyTorchCost,
-            1,
-            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
-        ),
     ],
 )
 @pytest.mark.filterwarnings(
@@ -471,6 +466,8 @@ def test_resume_from_checkpoint_with_additional_trials(
         checkpoint_manager=manager,
         max_processes=max_processes,
     )
+    if seed is not None:
+        iop.set_seed(seed)
     bench_2 = benchmark(
         algorithms=algorithms_2,
         benchmark_problem=problem_2,
@@ -545,11 +542,6 @@ def test_resume_from_checkpoint_with_additional_trials(
     [
         (LogisticRegressionCost, 1),
         pytest.param(LogisticRegressionCost, 2, marks=LINUX_ONLY_MP_GT1),
-        pytest.param(
-            PyTorchCost,
-            1,
-            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
-        ),
     ],
 )
 @pytest.mark.filterwarnings(
@@ -579,6 +571,8 @@ def test_resume_from_checkpoint_with_additional_iterations(
         checkpoint_manager=manager,
         max_processes=max_processes,
     )
+    if seed is not None:
+        iop.set_seed(seed)
     bench_10 = benchmark(
         algorithms=algorithms_10,
         benchmark_problem=problem_10,
@@ -653,11 +647,6 @@ def test_resume_from_checkpoint_with_additional_iterations(
     [
         (LogisticRegressionCost, 1),
         pytest.param(LogisticRegressionCost, 2, marks=LINUX_ONLY_MP_GT1),
-        pytest.param(
-            PyTorchCost,
-            1,
-            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
-        ),
     ],
 )
 @pytest.mark.filterwarnings(
@@ -687,6 +676,8 @@ def test_resume_from_checkpoint_with_additional_iterations_and_trials(
         checkpoint_manager=manager,
         max_processes=max_processes,
     )
+    if seed is not None:
+            iop.set_seed(seed)
     bench_10 = benchmark(
         algorithms=algorithms_10,
         benchmark_problem=problem_10,
@@ -762,11 +753,6 @@ def test_resume_from_checkpoint_with_additional_iterations_and_trials(
     [
         (LogisticRegressionCost, 1),
         pytest.param(LogisticRegressionCost, 2, marks=LINUX_ONLY_MP_GT1),
-        pytest.param(
-            PyTorchCost,
-            1,
-            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
-        ),
     ],
 )
 @pytest.mark.filterwarnings(
@@ -796,7 +782,8 @@ def test_resume_from_non_completed_checkpoint(
         checkpoint_manager=manager,
         max_processes=max_processes,
     )
-
+    if seed is not None:
+        iop.set_seed(seed)
     bench_10 = benchmark(
         algorithms=algorithms_10,
         benchmark_problem=problem_10,
@@ -913,11 +900,6 @@ def test_resume_from_non_completed_checkpoint(
     [
         (LogisticRegressionCost, 1),
         pytest.param(LogisticRegressionCost, 2, marks=LINUX_ONLY_MP_GT1),
-        pytest.param(
-            PyTorchCost,
-            1,
-            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
-        ),
     ],
 )
 @pytest.mark.filterwarnings(

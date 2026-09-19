@@ -15,7 +15,6 @@ from decent_bench.benchmark._metric_result import MetricResult
 from decent_bench.metrics import Metric, utils
 from decent_bench.metrics import metric_library as ml
 from decent_bench.metrics._metrics_view import NetworkMetricsView
-from decent_bench.metrics.utils import _find_duplicates
 from decent_bench.networks import Network
 from decent_bench.utils._logger import LOGGER, start_logger
 
@@ -168,6 +167,18 @@ def _validate_unique_descriptions(metrics: list[Metric], type_: Literal["table",
     if duplicate_metric_descriptions:
         duplicates = ", ".join(duplicate_metric_descriptions)
         raise ValueError(f"{type_.capitalize()} metric descriptions must be unique, duplicates found: {duplicates}")
+
+
+def _find_duplicates(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for item in items:
+        if item in seen:
+            duplicates.add(item)
+        else:
+            seen.add(item)
+
+    return sorted(duplicates)
 
 
 def _remove_unavailable(

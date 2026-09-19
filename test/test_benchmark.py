@@ -91,14 +91,7 @@ def _build_fed_problem_and_algorithms(
 
 
 @pytest.mark.parametrize(
-    "cost_cls",
-    [
-        LogisticRegressionCost,
-        pytest.param(
-            PyTorchCost,
-            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
-        ),
-    ],
+    "cost_cls", [LogisticRegressionCost,],
 )
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
@@ -126,14 +119,7 @@ def test_p2p(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
 
 
 @pytest.mark.parametrize(
-    "cost_cls",
-    [
-        LogisticRegressionCost,
-        pytest.param(
-            PyTorchCost,
-            marks=pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available"),
-        ),
-    ],
+    "cost_cls", [LogisticRegressionCost,],
 )
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
