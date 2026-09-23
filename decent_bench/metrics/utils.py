@@ -14,18 +14,16 @@ from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, T
 from rich.table import Column
 from sklearn import metrics as sk_metrics
 
-from decent_bench.costs import Cost, EmpiricalRiskCost
+from decent_bench.costs import EmpiricalRiskCost
 from decent_bench.metrics._metrics_view import AgentMetricsView
 from decent_bench.networks import FedNetwork
 from decent_bench.utils._logger import LOGGER
-from decent_bench.utils.types import Dataset
 
 if TYPE_CHECKING:
     from decent_bench.benchmark import BenchmarkProblem
 
 
 CACHE_MAX_SIZE = 50_000
-
 
 
 class MetricProgressBar(Progress):
@@ -219,50 +217,50 @@ def _recall(agents: Sequence[AgentMetricsView], problem: "BenchmarkProblem", ite
 
 
 ###### availability tests for metrics
-def _requires_x_optimal(problem: "BenchmarkProblem") -> tuple[bool, str | None]:
+def _requires_x_optimal(problem: "BenchmarkProblem") -> str | None:
     if getattr(problem, "x_optimal", None) is None:
-        return False, "requires problem.x_optimal"
-    return True, None
+        return "requires problem.x_optimal"
+    return None
 
 
-def _requires_test_data(problem: "BenchmarkProblem") -> tuple[bool, str | None]:
+def _requires_test_data(problem: "BenchmarkProblem") -> str | None:
     if getattr(problem, "test_data", None) is None:
-        return False, "requires problem.test_data"
-    return True, None
+        return "requires problem.test_data"
+    return None
 
-def _requires_empirical_cost(problem: "BenchmarkProblem") -> tuple[bool, str | None]:
+
+def _requires_empirical_cost(problem: "BenchmarkProblem") -> str | None:
     if not all(isinstance(a.cost, EmpiricalRiskCost) for a in problem.network.agents()):
-        return False, "requires all agents with EmpiricalRiskCost"
-    return True, None
+        return "requires all agents with EmpiricalRiskCost"
+    return None
 
 
-def _requires_integer_targets(problem: "BenchmarkProblem") -> tuple[bool, str | None]:
-    available, reason = _requires_test_data(problem)
-    if not available:
-        return available, reason
+def _requires_integer_targets(problem: "BenchmarkProblem") -> str | None:
+    reason = _requires_test_data(problem)
+    if reason is not None:
+        return reason
 
     int_dtypes = dtypes(kind=("signed integer", "unsigned integer"))
     for d in problem.test_data:  # type: ignore[union-attr]
         if d[1].dtype not in int_dtypes:
-            return False, f"requires integer targets, dtype {d[1].dtype} found"
-    return True, None
+            return f"requires integer targets, dtype {d[1].dtype} found"
+    return None
 
 
-def _requires_fednetwork(problem: "BenchmarkProblem") -> tuple[bool, str | None]:
+def _requires_fednetwork(problem: "BenchmarkProblem") -> str | None:
     if not isinstance(problem.network, FedNetwork):
-        return False, "requires FedNetwork"
-    return True, None
+        return "requires FedNetwork"
+    return None
 
 
 def _check_availability(
-        conditions: tuple[Callable[["BenchmarkProblem"], tuple[bool, str | None]], ...],
-        problem: "BenchmarkProblem"
-    ) -> tuple[bool, str | None]:
+    conditions: tuple[Callable[["BenchmarkProblem"], str | None], ...], problem: "BenchmarkProblem"
+) -> str | None:
     for c in conditions:
-        available, reason = c(problem)
-        if not available:
-            return available, reason
-    return True, None
+        reason = c(problem)
+        if reason is not None:
+            return reason
+    return None
 
 
 ###### iterations utils

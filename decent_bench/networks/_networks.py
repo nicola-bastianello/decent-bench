@@ -313,7 +313,6 @@ class Network(ABC):  # noqa: B024
 
         counter_increment = self._message_compression[sender].compressed_msg_size(msg) / sender.cost.size
         sender._n_sent_messages += counter_increment * len(receiver)  # noqa: SLF001
-        framework, device = sender.cost.framework, sender.cost.device
 
         # select confirmed receivers (message is not dropped)
         confirmed_receivers = [r for r in receiver if not self._message_drop[sender].should_drop()]

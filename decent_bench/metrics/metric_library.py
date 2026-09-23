@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from decent_array import interoperability as iop
-from decent_array.types._dtypes import _SIGNED_INT_DTYPES, _UNSIGNED_INT_DTYPES
 
 from decent_bench.costs import Cost, EmpiricalRiskCost
 from decent_bench.metrics import utils
@@ -43,7 +42,7 @@ class Regret(Metric):
     def is_available(  # noqa: D102
         self,
         problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
+    ) -> str | None:
         return utils._requires_x_optimal(problem)  # noqa: SLF001
 
     def compute(  # noqa: D102
@@ -126,7 +125,7 @@ class XError(Metric):
     def is_available(  # noqa: D102
         self,
         problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
+    ) -> str | None:
         return utils._requires_x_optimal(problem)  # noqa: SLF001
 
     def compute(  # noqa: D102
@@ -434,13 +433,15 @@ class Accuracy(Metric):
     def is_available(  # noqa: D102
         self,
         problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
-        return utils._check_availability((utils._requires_test_data,  # noqa: SLF001
-                                          utils._requires_empirical_cost,  # noqa: SLF001
-                                          utils._requires_integer_targets,  # noqa: SLF001
-                                        ),
-                                        problem
-                                        )
+    ) -> str | None:
+        return utils._check_availability(  # noqa: SLF001
+            (
+                utils._requires_test_data,  # noqa: SLF001
+                utils._requires_empirical_cost,  # noqa: SLF001
+                utils._requires_integer_targets,  # noqa: SLF001
+            ),
+            problem,
+        )
 
     def compute(  # noqa: D102
         self,
@@ -487,12 +488,14 @@ class MSE(Metric):
     def is_available(  # noqa: D102
         self,
         problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
-        return utils._check_availability((utils._requires_test_data,  # noqa: SLF001
-                                          utils._requires_empirical_cost,  # noqa: SLF001
-                                        ),
-                                        problem
-                                        )
+    ) -> str | None:
+        return utils._check_availability(  # noqa: SLF001
+            (
+                utils._requires_test_data,  # noqa: SLF001
+                utils._requires_empirical_cost,  # noqa: SLF001
+            ),
+            problem,
+        )
 
     def compute(  # noqa: D102
         self,
@@ -541,13 +544,15 @@ class Precision(Metric):
     def is_available(  # noqa: D102
         self,
         problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
-        return utils._check_availability((utils._requires_test_data,  # noqa: SLF001
-                                          utils._requires_empirical_cost,  # noqa: SLF001
-                                          utils._requires_integer_targets,  # noqa: SLF001
-                                        ),
-                                        problem
-                                        )
+    ) -> str | None:
+        return utils._check_availability(  # noqa: SLF001
+            (
+                utils._requires_test_data,  # noqa: SLF001
+                utils._requires_empirical_cost,  # noqa: SLF001
+                utils._requires_integer_targets,  # noqa: SLF001
+            ),
+            problem,
+        )
 
     def compute(  # noqa: D102
         self,
@@ -596,13 +601,15 @@ class Recall(Metric):
     def is_available(  # noqa: D102
         self,
         problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
-        return utils._check_availability((utils._requires_test_data,  # noqa: SLF001
-                                          utils._requires_empirical_cost,  # noqa: SLF001
-                                          utils._requires_integer_targets,  # noqa: SLF001
-                                        ),
-                                        problem
-                                        )
+    ) -> str | None:
+        return utils._check_availability(  # noqa: SLF001
+            (
+                utils._requires_test_data,  # noqa: SLF001
+                utils._requires_empirical_cost,  # noqa: SLF001
+                utils._requires_integer_targets,  # noqa: SLF001
+            ),
+            problem,
+        )
 
     def compute(  # noqa: D102
         self,
@@ -638,11 +645,11 @@ class Loss(Metric):
         iteration: int,
     ) -> list[float]:
         return [
-                agent.cost.function(agent.x_history[iteration], indices="all")
-                if isinstance(agent.cost, EmpiricalRiskCost)
-                else agent.cost.function(agent.x_history[iteration])
-                for agent in network.agents()
-            ]
+            agent.cost.function(agent.x_history[iteration], indices="all")
+            if isinstance(agent.cost, EmpiricalRiskCost)
+            else agent.cost.function(agent.x_history[iteration])
+            for agent in network.agents()
+        ]
 
 
 def _server_metric_cost(network: NetworkMetricsView, metric_name: str) -> Cost:
@@ -680,7 +687,7 @@ class ClientDriftFromServer(Metric):
     def is_available(  # noqa: D102
         self,
         problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
+    ) -> str | None:
         return utils._requires_fednetwork(problem)  # noqa: SLF001
 
     def compute(  # noqa: D102
@@ -711,7 +718,7 @@ class FractionSelectedClients(Metric):
     def is_available(  # noqa: D102
         self,
         problem: "BenchmarkProblem",
-    ) -> tuple[bool, str | None]:
+    ) -> str | None:
         return utils._requires_fednetwork(problem)  # noqa: SLF001
 
     def compute(  # noqa: D102

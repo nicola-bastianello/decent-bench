@@ -5,7 +5,7 @@ import contextlib
 from collections.abc import Iterator, Mapping, Sequence
 from copy import deepcopy
 from types import MappingProxyType
-from typing import Any, Self, cast
+from typing import Any, Self
 from uuid import UUID, uuid4
 
 from decent_array import Array

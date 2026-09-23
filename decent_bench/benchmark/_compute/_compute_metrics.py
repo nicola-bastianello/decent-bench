@@ -73,7 +73,7 @@ def compute_metrics(
         All used table- and plot-metrics will be saved to the checkpoints' metadata if a checkpoint manager is provided,
         in order to know which metrics were computed and can be displayed later.
 
-        Metrics that return ``False`` from :meth:`~decent_bench.metrics.Metric.is_available` for the given problem are
+        Metrics marked unavailable by :meth:`~decent_bench.metrics.Metric.is_available` for the given problem are
         filtered out from the returned metric lists. Warnings are emitted with the omitted metric names.
 
         Plot metrics can still be available even when their final table value is ``inf/nan``: plot computation keeps the
@@ -186,8 +186,8 @@ def _remove_unavailable(
 ) -> list[Metric]:
     available_metrics: list[Metric] = []
     for metric in metrics:
-        available, reason = metric.is_available(problem)
-        if not available:
+        reason = metric.is_available(problem)
+        if reason is not None:
             LOGGER.warning(f"Skipping {type_} metric '{metric.description}' because it is unavailable: {reason}")
             continue
 

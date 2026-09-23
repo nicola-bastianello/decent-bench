@@ -882,22 +882,21 @@ def test_add_legend_and_save_creates_missing_parent_directory(monkeypatch) -> No
 
 def test_xerror_unavailable_without_x_optimal() -> None:  # noqa: D103
     x_error = XError()
-    available, reason = x_error.is_available(SimpleNamespace(x_optimal=None))
-    assert not available
+    reason = x_error.is_available(SimpleNamespace(x_optimal=None))
+    assert reason is not None
     assert reason == "requires problem.x_optimal"
 
 
 def test_xerror_available_with_x_optimal() -> None:  # noqa: D103
     x_error = XError()
-    available, reason = x_error.is_available(SimpleNamespace(x_optimal=np.array([0.0])))
-    assert available
+    reason = x_error.is_available(SimpleNamespace(x_optimal=np.array([0.0])))
     assert reason is None
 
 
 def test_regret_unavailable_without_x_optimal() -> None:  # noqa: D103
     regret = Regret()
-    available, reason = regret.is_available(SimpleNamespace(x_optimal=None))
-    assert not available
+    reason = regret.is_available(SimpleNamespace(x_optimal=None))
+    assert reason is not None
     assert reason == "requires problem.x_optimal"
 
 
@@ -906,8 +905,8 @@ def test_metrics_unavailable_without_test_data() -> None:  # noqa: D103
     metrics = [Accuracy(), MSE(), Precision(), Recall()]
 
     for metric in metrics:
-        available, reason = metric.is_available(problem)
-        assert not available
+        reason = metric.is_available(problem)
+        assert reason is not None
         assert reason == "requires problem.test_data"
 
 
@@ -917,8 +916,8 @@ def test_metrics_unavailable_without_empirical_risk_cost() -> None:  # noqa: D10
     metrics = [Accuracy(), MSE(), Precision(), Recall()]
 
     for metric in metrics:
-        available, reason = metric.is_available(problem)
-        assert not available
+        reason = metric.is_available(problem)
+        assert reason is not None
         assert "EmpiricalRiskCost" in reason
 
 
@@ -928,16 +927,15 @@ def test_classification_metrics_unavailable_with_float_targets() -> None:  # noq
     problem = SimpleNamespace(test_data=[(Array(np.array([0.0])), Array(np.array([0.1])))], network=network)
 
     for metric in [Accuracy(), Precision(), Recall()]:
-        available, reason = metric.is_available(problem)
-        assert not available
+        reason = metric.is_available(problem)
+        assert reason is not None
         assert "integer targets" in reason
 
 
 def test_is_available_default_returns_true() -> None:  # noqa: D103
     """Base Metric.is_available default: always available."""
     metric = _MetricStub("t")
-    available, reason = metric.is_available(SimpleNamespace())
-    assert available
+    reason = metric.is_available(SimpleNamespace())
     assert reason is None
 
 
