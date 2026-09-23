@@ -183,6 +183,7 @@ class CheckpointManager:
         algorithms: list[Algorithm[Network]],
         problem: BenchmarkProblem,
         n_trials: int,
+        iterations: int,
     ) -> None:
         """
         Initialize checkpoint directory structure for a new benchmark run.
@@ -191,6 +192,7 @@ class CheckpointManager:
             algorithms: List of Algorithm objects to be benchmarked.
             problem: BenchmarkProblem configuration for the benchmark.
             n_trials: Total number of trials to run for each algorithm, used for resuming.
+            iterations: Number of iterations to run algorithms for.
 
         """
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -198,10 +200,10 @@ class CheckpointManager:
         # Save metadata
         metadata: dict[str, Any] = {
             "n_trials": n_trials,
+            "iterations": iterations,
             "algorithms": [
                 {
                     "name": alg.name,
-                    "iterations": alg.iterations,
                     "index": idx,
                 }
                 for idx, alg in enumerate(algorithms)
@@ -665,6 +667,7 @@ class CheckpointManager:
         return BenchmarkResult(
             problem=problem,
             states=states,
+            iterations=self.load_metadata()["iterations"],
         )
 
     def save_metrics_result(self, metrics_result: MetricResult) -> None:

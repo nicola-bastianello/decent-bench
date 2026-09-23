@@ -77,7 +77,7 @@ class DropOnCalls(DropScheme):
 def test_fedpd_initializes_primal_dual_and_center_states() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedPD(iterations=1, x0=Array(np.array([2.0])))
+    algorithm = FedPD(x0=Array(np.array([2.0])))
 
     algorithm.initialize(network)
 
@@ -91,7 +91,7 @@ def test_fedpd_initializes_primal_dual_and_center_states() -> None:
 def test_fedpd_p_zero_always_aggregates_and_synchronizes_centers() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedPD(iterations=1, step_size=1.0, penalty=1.0, skip_probability=0.0)
+    algorithm = FedPD(step_size=1.0, penalty=1.0, skip_probability=0.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -110,7 +110,6 @@ def test_fedpd_supports_heterogeneous_local_steps() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
     algorithm = FedPD(
-        iterations=1,
         step_size=0.5,
         penalty=1.0,
         skip_probability=0.0,
@@ -129,7 +128,7 @@ def test_fedpd_supports_heterogeneous_local_steps() -> None:
 def test_fedpd_always_selects_all_active_clients() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedPD(iterations=1, step_size=1.0, penalty=1.0, skip_probability=1.0)
+    algorithm = FedPD(step_size=1.0, penalty=1.0, skip_probability=1.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -148,7 +147,7 @@ def test_fedpd_rejects_selection_scheme_argument() -> None:
 def test_fedpd_p_one_always_skips_aggregation() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedPD(iterations=1, step_size=1.0, penalty=1.0, skip_probability=1.0)
+    algorithm = FedPD(step_size=1.0, penalty=1.0, skip_probability=1.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -161,7 +160,7 @@ def test_fedpd_p_one_always_skips_aggregation() -> None:
 
 
 def test_fedpd_dual_update_uses_previous_center() -> None:
-    algorithm = FedPD(iterations=1, step_size=1.0, penalty=2.0, skip_probability=1.0)
+    algorithm = FedPD(step_size=1.0, penalty=2.0, skip_probability=1.0)
     client = Agent(TrackingCost(gradient_value=0.0))
     network = FedNetwork(clients=[client])
     algorithm.initialize(network)
@@ -179,7 +178,7 @@ def test_fedpd_dual_update_uses_previous_center() -> None:
 def test_fedpd_aggregate_uses_only_received_center_candidates() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedPD(iterations=1)
+    algorithm = FedPD()
     algorithm.initialize(network)
     network.server().x = Array(np.array([10.0]))
 
@@ -201,7 +200,7 @@ def test_fedpd_synchronizes_all_active_clients_after_aggregating_received_candid
         clients=clients,
         message_drop={clients[0]: DropOnCalls({1}), clients[1]: NoDrops()},
     )
-    algorithm = FedPD(iterations=1, step_size=1.0, penalty=1.0, skip_probability=0.0)
+    algorithm = FedPD(step_size=1.0, penalty=1.0, skip_probability=0.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -218,7 +217,7 @@ def test_fedpd_does_not_synchronize_when_no_center_candidates_are_received() -> 
         clients=clients,
         message_drop={clients[0]: DropOnCalls({1}), clients[1]: DropOnCalls({1})},
     )
-    algorithm = FedPD(iterations=1, step_size=1.0, penalty=1.0, skip_probability=0.0)
+    algorithm = FedPD(step_size=1.0, penalty=1.0, skip_probability=0.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -239,7 +238,7 @@ def test_fedpd_keeps_local_center_when_server_sync_message_is_dropped() -> None:
         server=server,
         message_drop={server: DropOnCalls({1}), clients[0]: NoDrops(), clients[1]: NoDrops()},
     )
-    algorithm = FedPD(iterations=1, step_size=1.0, penalty=1.0, skip_probability=0.0)
+    algorithm = FedPD(step_size=1.0, penalty=1.0, skip_probability=0.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -255,9 +254,9 @@ def test_fedpd_probabilistic_communication_is_reproducible_when_seeded() -> None
         iop.set_seed(123)
         clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
         network = FedNetwork(clients=clients)
-        algorithm = FedPD(iterations=5, step_size=1.0, penalty=1.0, skip_probability=0.5)
+        algorithm = FedPD(step_size=1.0, penalty=1.0, skip_probability=0.5)
         algorithm.initialize(network)
-        for iteration in range(algorithm.iterations):
+        for iteration in range(5):
             network._step(iteration)  # noqa: SLF001
             algorithm.step(network, iteration)
         return np.copy(network.server().x.value), [np.copy(client.aux_vars["center"].value) for client in clients]
@@ -290,19 +289,19 @@ def test_fedpd_probabilistic_communication_is_reproducible_when_seeded() -> None
 )
 def test_fedpd_rejects_invalid_hyperparameters(kwargs: dict[str, float | int], expected_message: str) -> None:
     with pytest.raises(ValueError, match=expected_message):
-        FedPD(iterations=1, **kwargs)
+        FedPD(**kwargs)
 
 
 @pytest.mark.parametrize("num_local_steps", [1.5])
 def test_fedpd_rejects_non_integer_scalar_num_local_steps(num_local_steps: object) -> None:
     with pytest.raises(TypeError, match="`num_local_steps` must be an int or a mapping from Agent"):
-        FedPD(iterations=1, num_local_steps=num_local_steps)
+        FedPD(num_local_steps=num_local_steps)
 
 
 def test_fedpd_normalizes_scalar_local_steps_to_client_mapping_on_initialize() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedPD(iterations=1, num_local_steps=2)
+    algorithm = FedPD(num_local_steps=2)
 
     algorithm.initialize(network)
 
@@ -312,7 +311,7 @@ def test_fedpd_normalizes_scalar_local_steps_to_client_mapping_on_initialize() -
 @pytest.mark.parametrize("num_local_steps", [{}, {"not-an-agent": 1}, {1: 1}])
 def test_fedpd_rejects_local_step_mappings_missing_network_clients(num_local_steps: object) -> None:
     network = FedNetwork(clients=[Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))])
-    algorithm = FedPD(iterations=1, num_local_steps=num_local_steps)
+    algorithm = FedPD(num_local_steps=num_local_steps)
 
     with pytest.raises(ValueError, match="`num_local_steps` mapping must provide a value for every network client"):
         algorithm.initialize(network)
@@ -322,11 +321,11 @@ def test_fedpd_rejects_local_step_mappings_missing_network_clients(num_local_ste
 def test_fedpd_rejects_invalid_local_step_mapping_values(step_value: float) -> None:
     client = Agent(TrackingCost())
     with pytest.raises(ValueError, match="`num_local_steps` must have positive values"):
-        FedPD(iterations=1, num_local_steps={client: step_value})
+        FedPD(num_local_steps={client: step_value})
 
 
 @pytest.mark.parametrize("step_value", [2.0])
 def test_fedpd_rejects_non_integer_local_step_mapping_values(step_value: object) -> None:
     client = Agent(TrackingCost())
     with pytest.raises(TypeError, match="`num_local_steps` mapping values must be integers"):
-        FedPD(iterations=1, num_local_steps={client: step_value})
+        FedPD(num_local_steps={client: step_value})

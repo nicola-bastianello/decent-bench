@@ -49,7 +49,7 @@ def _validate_unique_algorithm_names(algorithms: list[Algorithm[Network]]) -> No
         raise ValueError(f"Algorithm names must be unique, duplicates found: {duplicates}")
 
 
-def resume_benchmark(  # noqa: PLR0912
+def resume_benchmark(  # noqa: PLR0912, PLR0915
     checkpoint_manager: "CheckpointManager",
     increase_iterations: int = 0,
     increase_trials: int = 0,
@@ -85,7 +85,7 @@ def resume_benchmark(  # noqa: PLR0912
             use :class:`~concurrent.futures.ProcessPoolExecutor`'s default. If your algorithm is very lightweight you
             may want to set this to 1 to avoid the multiprocessing overhead.
         progress_step: if provided, the progress bar will step every `progress_step` iterations.
-            When provided, each algorithm's task total becomes `n_trials * ceil(algorithm.iterations / progress_step)`.
+            When provided, each algorithm's task total becomes `n_trials * ceil(iterations / progress_step)`.
             If `None`, the progress bar uses 1 unit per trial.
         show_speed: whether to show speed (iterations/second) in the progress bar.
         show_trial: whether to show which trials are currently running in the progress bar.
@@ -115,6 +115,7 @@ def resume_benchmark(  # noqa: PLR0912
     Raises:
         ValueError: If the checkpoint directory does not exist, is empty, or contains invalid metadata.
         ValueError: If increase_iterations or increase_trials is negative.
+        ValueError: If the stored iteration count is not positive.
 
     """
     if not checkpoint_manager.checkpoint_dir.exists():
@@ -129,7 +130,7 @@ def resume_benchmark(  # noqa: PLR0912
     with Status("Loading benchmark state from checkpoint..."):
         try:
             metadata = checkpoint_manager.load_metadata()
-            if metadata is None or "n_trials" not in metadata:
+            if metadata is None or "n_trials" not in metadata or "iterations" not in metadata:
                 raise ValueError("Invalid or missing metadata in checkpoint directory")
 
             problem = checkpoint_manager.load_benchmark_problem()
@@ -166,18 +167,23 @@ def resume_benchmark(  # noqa: PLR0912
             f"total increase is {total_increase_trials}"
         )
 
+    iterations = metadata["iterations"]
+    if iterations <= 0:
+        raise ValueError("Stored `iterations` must be positive")
     total_increase_iterations = increase_iterations + metadata.get("benchmark_metadata", {}).get(
         "increased_iterations", 0
     )
     if increase_iterations != 0:
-        for alg_idx, alg in enumerate(algorithms):
-            alg.iterations += total_increase_iterations
+        iterations += increase_iterations
+        for alg_idx, _alg in enumerate(algorithms):
             # Unmark all trials as incomplete to resume them with increased iterations
             for trial in range(n_trials):
                 checkpoint_manager.unmark_trial_complete(alg_idx, trial)
         # If we resume again, we have to increase the iterations on top of the already increased iterations,
         # so we need to keep track of the total increase in the metadata
-        metadata = checkpoint_manager.append_metadata({"increased_iterations": total_increase_iterations})
+        metadata = checkpoint_manager.append_metadata(
+            {"iterations": iterations, "increased_iterations": total_increase_iterations}
+        )
         LOGGER.info(
             f"Increased iterations for all algorithms by {increase_iterations}, "
             f"total increase is {total_increase_iterations}"
@@ -190,6 +196,7 @@ def resume_benchmark(  # noqa: PLR0912
 
     results = _benchmark(
         algorithms=algorithms,
+        iterations=iterations,
         benchmark_problem=problem,
         log_listener=log_listener,
         manager=manager,
@@ -210,6 +217,7 @@ def resume_benchmark(  # noqa: PLR0912
 def benchmark(
     algorithms: list[Algorithm[Network]],
     benchmark_problem: BenchmarkProblem,
+    iterations: int,
     *,
     n_trials: int = 1,
     max_processes: int | None = 1,
@@ -227,6 +235,7 @@ def benchmark(
         algorithms: algorithms to benchmark
         benchmark_problem: problem to benchmark on, defines the network topology, cost functions, and communication
             constraints.
+        iterations: number of iterations to run each algorithm.
         n_trials: number of times to run each algorithm on the benchmark problem, running more trials improves the
             statistical results, at least 30 trials are recommended for the central limit theorem to apply.
         max_processes: maximum number of processes to use when running trials, multiprocessing improves performance
@@ -234,7 +243,7 @@ def benchmark(
             use :class:`~concurrent.futures.ProcessPoolExecutor`'s default. If your algorithm is very lightweight you
             may want to set this to 1 to avoid the multiprocessing overhead.
         progress_step: if provided, the progress bar will step every `progress_step` iterations.
-            When provided, each algorithm's task total becomes `n_trials * ceil(algorithm.iterations / progress_step)`.
+            When provided, each algorithm's task total becomes `n_trials * ceil(iterations / progress_step)`.
             If `None`, the progress bar uses 1 unit per trial.
         show_speed: whether to show speed (iterations/second) in the progress bar.
         show_trial: whether to show which trials are currently running in the progress bar.
@@ -265,8 +274,11 @@ def benchmark(
     Raises:
         ValueError: If the checkpoint directory is not empty when initializing the CheckpointManager.
         ValueError: If any two algorithms share the same name.
+        ValueError: If ``iterations`` is not positive.
 
     """
+    if iterations <= 0:
+        raise ValueError("`iterations` must be positive")
     _validate_unique_algorithm_names(algorithms)
     log_listener, manager, mp_context = _init_logging_and_multiprocessing(log_level, max_processes, benchmark_problem)
 
@@ -277,7 +289,7 @@ def benchmark(
                 f"Please provide an empty or non-existent directory to save checkpoints."
             )
 
-        checkpoint_manager.initialize(algorithms, benchmark_problem, n_trials)
+        checkpoint_manager.initialize(algorithms, benchmark_problem, n_trials, iterations)
     else:
         LOGGER.info(
             "No checkpoint manager provided, running benchmark without checkpointing. "
@@ -286,6 +298,7 @@ def benchmark(
 
     results = _benchmark(
         algorithms=algorithms,
+        iterations=iterations,
         benchmark_problem=benchmark_problem,
         log_listener=log_listener,
         manager=manager,
@@ -306,6 +319,7 @@ def benchmark(
 def _benchmark(
     algorithms: list[Algorithm[Network]],
     benchmark_problem: BenchmarkProblem,
+    iterations: int,
     log_listener: QueueListener | None,
     manager: "SyncManager | None",
     *,
@@ -325,6 +339,7 @@ def _benchmark(
         algorithms: algorithms to benchmark
         benchmark_problem: problem to benchmark on, defines the network topology, cost functions, and communication
             constraints.
+        iterations: number of iterations to run algorithms for.
         log_listener: multiprocessing logging listener to handle log messages from worker processes.
         manager: multiprocessing manager for sharing data between processes.
         mp_context: multiprocessing context to use for creating new processes.
@@ -335,7 +350,7 @@ def _benchmark(
             use :class:`~concurrent.futures.ProcessPoolExecutor`'s default. If your algorithm is very lightweight you
             may want to set this to 1 to avoid the multiprocessing overhead.
         progress_step: if provided, the progress bar will step every `progress_step` iterations.
-            When provided, each algorithm's task total becomes `n_trials * ceil(algorithm.iterations / progress_step)`.
+            When provided, each algorithm's task total becomes `n_trials * ceil(iterations / progress_step)`.
             If `None`, the progress bar uses 1 unit per trial.
         show_speed: whether to show speed (iterations/second) in the progress bar.
         show_trial: whether to show which trials are currently running in the progress bar.
@@ -367,13 +382,14 @@ def _benchmark(
     """
     LOGGER.info("Starting benchmark execution ")
     LOGGER.debug(f"Nr of agents: {len(benchmark_problem.network.agents())}")
-    prog_ctrl = ProgressBarController(manager, algorithms, n_trials, progress_step, show_speed, show_trial)
+    prog_ctrl = ProgressBarController(manager, algorithms, iterations, n_trials, progress_step, show_speed, show_trial)
 
     if runtime_metrics is not None and len(runtime_metrics) == 0:
         runtime_metrics = None
 
     resulting_nw_states = _run_trials(
         algorithms,
+        iterations,
         n_trials,
         benchmark_problem,
         prog_ctrl,
@@ -384,7 +400,7 @@ def _benchmark(
         runtime_metrics,
     )
     LOGGER.info("Benchmark execution complete")
-    return BenchmarkResult(problem=benchmark_problem, states=resulting_nw_states)
+    return BenchmarkResult(problem=benchmark_problem, states=resulting_nw_states, iterations=iterations)
 
 
 def _init_logging_and_multiprocessing(
@@ -427,6 +443,7 @@ def _is_multiprocessing_main_guard_error(exc: RuntimeError) -> bool:
 
 def _run_trials(  # noqa: PLR0917
     algorithms: list[Algorithm[Network]],
+    iterations: int,
     n_trials: int,
     problem: BenchmarkProblem,
     progress_bar_ctrl: ProgressBarController,
@@ -484,6 +501,7 @@ def _run_trials(  # noqa: PLR0917
         alg: [
             (
                 alg,
+                iterations,
                 problem,
                 progress_bar_handle,
                 trial,
@@ -538,6 +556,7 @@ def _derive_trial_seed(base_seed: int | None, algorithm_index: int, trial: int) 
 
 def _run_trial(  # noqa: PLR0917
     algorithm: Algorithm[Network],
+    iterations: int,
     problem: BenchmarkProblem,
     progress_bar_handle: "ProgressBarHandle",
     trial: int,
@@ -555,14 +574,12 @@ def _run_trial(  # noqa: PLR0917
         checkpoint = checkpoint_manager.load_checkpoint(alg_idx, trial)
         if checkpoint is not None:
             alg, network, last_completed_iteration, rng_state = checkpoint
-            # Set iterations in case it is updated
-            alg.iterations = algorithm.iterations
             # Resume from the next iteration after the last completed one
             # The checkpoint at iteration N contains the state AFTER step(N) completes,
             # so we should resume from iteration N+1
             start_iteration = last_completed_iteration + 1
             LOGGER.debug(
-                f"Resuming {algorithm.name} trial {trial} from iteration {start_iteration}/{algorithm.iterations} "
+                f"Resuming {algorithm.name} trial {trial} from iteration {start_iteration}/{iterations} "
                 f"(loaded checkpoint from iteration {last_completed_iteration})"
             )
             iop.set_rng_state(rng_state)
@@ -580,7 +597,7 @@ def _run_trial(  # noqa: PLR0917
     trial_runtime_metrics = _get_runtime_metrics(runtime_metrics, algorithm, trial, runtime_plotter_queue)
 
     def progress_callback(iteration: int) -> None:
-        progress_bar_handle.advance_progress_bar(algorithm, iteration)
+        progress_bar_handle.advance_progress_bar(algorithm, iteration, iterations)
         if checkpoint_manager is not None and checkpoint_manager.should_checkpoint(iteration):
             checkpoint_manager.save_checkpoint(
                 alg_idx=alg_idx,
@@ -592,7 +609,7 @@ def _run_trial(  # noqa: PLR0917
             )
 
         for metric in trial_runtime_metrics:
-            if metric.should_update(iteration) or iteration + 1 == alg.iterations:
+            if metric.should_update(iteration) or iteration + 1 == iterations:
                 try:
                     metric.update_plot(problem, network.agents(), iteration)
                 except Exception as e:
@@ -602,12 +619,12 @@ def _run_trial(  # noqa: PLR0917
 
     with warnings.catch_warnings(action="error"):
         try:
-            alg.run(network, start_iteration, progress_callback)
+            alg.run(network, iterations, start_iteration, progress_callback)
             if checkpoint_manager is not None:
                 checkpoint_manager.mark_trial_complete(
                     alg_idx=alg_idx,
                     trial=trial,
-                    iteration=algorithm.iterations - 1,
+                    iteration=iterations - 1,
                     algorithm=alg,
                     network=network,
                     rng_state=iop.get_rng_state(),

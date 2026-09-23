@@ -35,10 +35,11 @@ if __name__ == "__main__":
 
     results = benchmark.benchmark(
         algorithms=[
-            FedAvg(iterations=num_iter, step_size=step, num_local_steps=num_local_steps),
-            Scaffold(iterations=num_iter, step_size=step, num_local_steps=num_local_steps),
+            FedAvg(step_size=step, num_local_steps=num_local_steps),
+            Scaffold(step_size=step, num_local_steps=num_local_steps),
         ],
         benchmark_problem=problem,
+        iterations=num_iter,
         n_trials=10,
         checkpoint_manager=cm,
         )

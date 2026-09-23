@@ -198,21 +198,21 @@ def _run_federated_local_update(
     server = Agent(ZeroCost(cost.shape))
 
     if algorithm_name == "fedavg":
-        algorithm = FedAvg(iterations=1, step_size=step_size, num_local_steps=num_local_steps)
+        algorithm = FedAvg(step_size=step_size, num_local_steps=num_local_steps)
     elif algorithm_name == "fedadagrad":
-        algorithm = FedAdagrad(iterations=1, step_size=step_size, num_local_steps=num_local_steps)
+        algorithm = FedAdagrad(step_size=step_size, num_local_steps=num_local_steps)
     elif algorithm_name == "fedyogi":
-        algorithm = FedYogi(iterations=1, step_size=step_size, num_local_steps=num_local_steps)
+        algorithm = FedYogi(step_size=step_size, num_local_steps=num_local_steps)
     elif algorithm_name == "fedadam":
-        algorithm = FedAdam(iterations=1, step_size=step_size, num_local_steps=num_local_steps)
+        algorithm = FedAdam(step_size=step_size, num_local_steps=num_local_steps)
     elif algorithm_name == "fedprox":
-        algorithm = FedProx(iterations=1, step_size=step_size, num_local_steps=num_local_steps, penalty=mu)
+        algorithm = FedProx(step_size=step_size, num_local_steps=num_local_steps, penalty=mu)
     elif algorithm_name == "feddyn":
-        algorithm = FedDyn(iterations=1, step_size=step_size, penalty=1.0, num_local_steps=num_local_steps)
+        algorithm = FedDyn(step_size=step_size, penalty=1.0, num_local_steps=num_local_steps)
     elif algorithm_name == "fedpd":
-        algorithm = FedPD(iterations=1, step_size=step_size, penalty=1.0, num_local_steps=num_local_steps)
+        algorithm = FedPD(step_size=step_size, penalty=1.0, num_local_steps=num_local_steps)
     elif algorithm_name == "scaffold":
-        algorithm = Scaffold(iterations=1, step_size=step_size, num_local_steps=num_local_steps)
+        algorithm = Scaffold(step_size=step_size, num_local_steps=num_local_steps)
     else:
         raise ValueError(f"Unsupported federated algorithm: {algorithm_name}")
 

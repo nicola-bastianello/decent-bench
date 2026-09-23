@@ -92,7 +92,7 @@ def _run_scaffold_local_update(
     client_control: float = 0.0,
     server_control: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    algorithm = Scaffold(iterations=1, step_size=step_size, num_local_steps=num_local_steps)
+    algorithm = Scaffold(step_size=step_size, num_local_steps=num_local_steps)
     client = Agent(cost)
     server = Agent(ZeroCost(cost.shape))
     client.initialize(
@@ -112,7 +112,6 @@ def test_scaffold_initializes_control_variates_from_c0() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
     algorithm = Scaffold(
-        iterations=1,
         c0={
             clients[0]: Array(np.array([1.0])),
             clients[1]: Array(np.array([3.0])),
@@ -131,7 +130,6 @@ def test_scaffold_infers_server_control_from_client_c0() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
     algorithm = Scaffold(
-        iterations=1,
         c0={
             clients[0]: Array(np.array([1.0])),
             clients[1]: Array(np.array([3.0])),
@@ -162,7 +160,6 @@ def test_control_variate_correction_changes_the_local_step() -> None:
 
 def test_scaffold_persists_control_variates_across_rounds() -> None:
     algorithm = Scaffold(
-        iterations=2,
         step_size=1.0,
         num_local_steps=1,
         server_step_size=1.0,
@@ -189,7 +186,7 @@ def test_scaffold_persists_control_variates_across_rounds() -> None:
 
 
 def test_scaffold_uses_uniform_aggregation() -> None:
-    algorithm = Scaffold(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = Scaffold(step_size=1.0, num_local_steps=1)
     network = FedNetwork(clients=[Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))])
 
     algorithm.initialize(network)
@@ -202,13 +199,11 @@ def test_scaffold_uses_uniform_aggregation() -> None:
 
 def test_server_step_size_scales_only_the_server_model_update() -> None:
     full_step_algorithm = Scaffold(
-        iterations=1,
         step_size=1.0,
         num_local_steps=1,
         server_step_size=1.0,
     )
     damped_step_algorithm = Scaffold(
-        iterations=1,
         step_size=1.0,
         num_local_steps=1,
         server_step_size=0.25,
@@ -231,7 +226,7 @@ def test_server_step_size_scales_only_the_server_model_update() -> None:
 
 
 def test_scaffold_aggregation_uses_only_received_updates_for_model_and_control_deltas() -> None:
-    algorithm = Scaffold(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = Scaffold(step_size=1.0, num_local_steps=1)
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
     algorithm.initialize(network)
@@ -258,7 +253,6 @@ def test_scaffold_aggregation_uses_only_received_updates_for_model_and_control_d
 
 def test_scaffold_partial_participation_persists_control_variates_across_rounds() -> None:
     algorithm = Scaffold(
-        iterations=3,
         step_size=1.0,
         num_local_steps=1,
         server_step_size=1.0,
@@ -305,7 +299,7 @@ def test_scaffold_partial_participation_persists_control_variates_across_rounds(
 
 
 def test_scaffold_skips_participation_when_broadcast_is_dropped() -> None:
-    algorithm = Scaffold(iterations=2, step_size=1.0, num_local_steps=1)
+    algorithm = Scaffold(step_size=1.0, num_local_steps=1)
     client = Agent(TrackingCost(gradient_value=0.0))
     server = Agent(ZeroCost((1,)))
     network = FedNetwork(
@@ -332,7 +326,7 @@ def test_scaffold_skips_participation_when_broadcast_is_dropped() -> None:
 
 
 def test_scaffold_dropped_server_broadcasts_do_not_make_clients_participate() -> None:
-    algorithm = Scaffold(iterations=2, step_size=1.0, num_local_steps=1)
+    algorithm = Scaffold(step_size=1.0, num_local_steps=1)
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     server = Agent(ZeroCost((1,)))
     network = FedNetwork(

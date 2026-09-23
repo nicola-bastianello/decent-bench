@@ -76,7 +76,6 @@ class Scaffold(FedAlgorithm):
 
     """
 
-    iterations: int = 100
     step_size: float = 0.001
     num_local_steps: int = 1
     server_step_size: float = 1.0

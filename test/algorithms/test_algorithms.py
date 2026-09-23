@@ -49,44 +49,44 @@ num_iterations = 25
 all_p2p_algs = pytest.mark.parametrize(
     ("algorithm_cls", "kwargs"),
     [
-        (DGD, {"iterations": num_iterations, "step_size": 0.1}),
-        (ATC, {"iterations": num_iterations, "step_size": 0.1}),
-        (SimpleGT, {"iterations": num_iterations, "step_size": 0.1}),
-        (ED, {"iterations": num_iterations, "step_size": 0.1}),
-        (AugDGM, {"iterations": num_iterations, "step_size": 0.1}),
-        (WangElia, {"iterations": num_iterations, "step_size": 0.1}),
-        (EXTRA, {"iterations": num_iterations, "step_size": 0.1}),
-        (ATC_Tracking, {"iterations": num_iterations, "step_size": 0.1}),
-        (NIDS, {"iterations": num_iterations, "step_size": 0.1}),
-        (ADMM, {"iterations": num_iterations, "penalty": 1.0, "relaxation": 0.5}),
-        (ATG, {"iterations": num_iterations, "penalty": 1.0, "relaxation": 0.5}),
-        (DLM, {"iterations": num_iterations, "step_size": 0.1, "penalty": 1.0}),
-        (DiNNO, {"iterations": num_iterations, "step_size": 0.1, "num_local_steps": 5}),
-        (GT_VR, {"iterations": num_iterations, "step_size": 0.1, "snapshot_prob": 0.5}),
-        (GT_SAGA, {"iterations": num_iterations, "step_size": 0.1}),
-        (GT_SARAH, {"iterations": num_iterations, "step_size": 0.1, "num_local_steps": 5}),
-        (KGT, {"iterations": num_iterations, "step_size": 0.1, "num_local_steps": 5}),
-        (LED, {"iterations": num_iterations, "step_size": 0.1, "num_local_steps": 5}),
-        (LT_ADMM, {"iterations": num_iterations, "step_size": 0.1, "num_local_steps": 5}),
-        (LT_ADMM_VR, {"iterations": num_iterations, "step_size": 0.1, "num_local_steps": 5, "v2": False}),
-        (LT_ADMM_VR, {"iterations": num_iterations, "step_size": 0.1, "num_local_steps": 5, "v2": True}),
-        (ProxSkip, {"iterations": num_iterations, "step_size": 0.1, "comm_probability": 0.5}),
+        (DGD, {"step_size": 0.1}),
+        (ATC, {"step_size": 0.1}),
+        (SimpleGT, {"step_size": 0.1}),
+        (ED, {"step_size": 0.1}),
+        (AugDGM, {"step_size": 0.1}),
+        (WangElia, {"step_size": 0.1}),
+        (EXTRA, {"step_size": 0.1}),
+        (ATC_Tracking, {"step_size": 0.1}),
+        (NIDS, {"step_size": 0.1}),
+        (ADMM, {"penalty": 1.0, "relaxation": 0.5}),
+        (ATG, {"penalty": 1.0, "relaxation": 0.5}),
+        (DLM, {"step_size": 0.1, "penalty": 1.0}),
+        (DiNNO, {"step_size": 0.1, "num_local_steps": 5}),
+        (GT_VR, {"step_size": 0.1, "snapshot_prob": 0.5}),
+        (GT_SAGA, {"step_size": 0.1}),
+        (GT_SARAH, {"step_size": 0.1, "num_local_steps": 5}),
+        (KGT, {"step_size": 0.1, "num_local_steps": 5}),
+        (LED, {"step_size": 0.1, "num_local_steps": 5}),
+        (LT_ADMM, {"step_size": 0.1, "num_local_steps": 5}),
+        (LT_ADMM_VR, {"step_size": 0.1, "num_local_steps": 5, "v2": False}),
+        (LT_ADMM_VR, {"step_size": 0.1, "num_local_steps": 5, "v2": True}),
+        (ProxSkip, {"step_size": 0.1, "comm_probability": 0.5}),
     ],
 )
 
 all_fed_algs = pytest.mark.parametrize(
     ("algorithm_cls", "kwargs"),
     [
-        (FedAvg, {"iterations": num_iterations, "step_size": 0.1}),
-        (FedDyn, {"iterations": num_iterations, "step_size": 0.1}),
-        (FedLT, {"iterations": num_iterations, "step_size": 0.1}),
-        (FedProx, {"iterations": num_iterations, "step_size": 0.1}),
-        (FedAdagrad, {"iterations": num_iterations, "step_size": 0.1}),
-        (FedNova, {"iterations": num_iterations, "step_size": 0.1}),
-        (FedPD, {"iterations": num_iterations, "step_size": 0.1}),
-        (FedYogi, {"iterations": num_iterations, "step_size": 0.1}),
-        (FedAdam, {"iterations": num_iterations, "step_size": 0.1}),
-        (Scaffold, {"iterations": num_iterations, "step_size": 0.1}),
+        (FedAvg, {"step_size": 0.1}),
+        (FedDyn, {"step_size": 0.1}),
+        (FedLT, {"step_size": 0.1}),
+        (FedProx, {"step_size": 0.1}),
+        (FedAdagrad, {"step_size": 0.1}),
+        (FedNova, {"step_size": 0.1}),
+        (FedPD, {"step_size": 0.1}),
+        (FedYogi, {"step_size": 0.1}),
+        (FedAdam, {"step_size": 0.1}),
+        (Scaffold, {"step_size": 0.1}),
     ],
 )
 
@@ -153,14 +153,12 @@ def _create_fed_network(impairments: bool, cost_cls: type) -> FedNetwork:
 @all_p2p_algs
 def test_p2p_algorithm_instantiation(algorithm_cls: type, kwargs: dict[str, float | int]) -> None:
     algorithm = algorithm_cls(**kwargs)
-    assert algorithm.iterations == num_iterations
     assert isinstance(algorithm.name, str)
 
 
 @all_fed_algs
 def test_fed_algorithm_instantiation(algorithm_cls: type, kwargs: dict[str, float | int]) -> None:
     algorithm = algorithm_cls(**kwargs)
-    assert algorithm.iterations == num_iterations
     assert isinstance(algorithm.name, str)
 
 
@@ -178,7 +176,7 @@ def test_p2p_algorithm_execution(
     network = _create_p2p_network(impairments, LinearRegressionCost)
 
     # Just check that it runs without errors
-    algorithm.run(network)
+    algorithm.run(network, num_iterations)
 
 
 @pytest.mark.parametrize(
@@ -195,4 +193,4 @@ def test_fed_algorithm_execution(
     network = _create_fed_network(impairments, LinearRegressionCost)
 
     # Just check that it runs without errors
-    algorithm.run(network)
+    algorithm.run(network, num_iterations)

@@ -50,12 +50,12 @@ def _build_p2p_problem_and_algorithms(
     )
     problem = BenchmarkProblem(network=network, x_optimal=x_optimal, test_data=test_data)
     algorithms: list[Algorithm[Any]] = [
-        DGD(iterations=iterations, step_size=0.01),
-        ATC(iterations=iterations, step_size=0.01),
+        DGD(step_size=0.01),
+        ATC(step_size=0.01),
     ] + (
         # ADMM does not work with PyTorchCost due to no Proximal
         [
-            ADMM(iterations=iterations),
+            ADMM(),
         ]
         if cost_cls is LogisticRegressionCost
         else []
@@ -81,11 +81,11 @@ def _build_fed_problem_and_algorithms(
     )
     problem = BenchmarkProblem(network=network, x_optimal=x_optimal, test_data=test_data)
     algorithms: list[Algorithm[Any]] = [
-        FedAvg(iterations=iterations, step_size=0.01),
-        FedNova(iterations=iterations, step_size=0.01),
-        FedAdagrad(iterations=iterations, step_size=0.01, server_step_size=0.01),
-        FedYogi(iterations=iterations, step_size=0.01, server_step_size=0.01),
-        FedAdam(iterations=iterations, step_size=0.01, server_step_size=0.01),
+        FedAvg(step_size=0.01),
+        FedNova(step_size=0.01),
+        FedAdagrad(step_size=0.01, server_step_size=0.01),
+        FedYogi(step_size=0.01, server_step_size=0.01),
+        FedAdam(step_size=0.01, server_step_size=0.01),
     ]
     return problem, algorithms
 
@@ -103,6 +103,7 @@ def test_p2p(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
     bench = benchmark(
         algorithms=algorithms_5,
         benchmark_problem=problem_5,
+        iterations=5,
         n_trials=2,
     )
 
@@ -131,6 +132,7 @@ def test_fed(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
     bench = benchmark(
         algorithms=algorithms_5,
         benchmark_problem=problem_5,
+        iterations=5,
         n_trials=2,
     )
 
@@ -155,5 +157,6 @@ def test_benchmark_rejects_duplicate_algorithm_names() -> None:
         benchmark(
             algorithms=algorithms,
             benchmark_problem=problem,
+            iterations=5,
             n_trials=1,
         )

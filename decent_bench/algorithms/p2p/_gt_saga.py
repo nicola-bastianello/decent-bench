@@ -23,7 +23,6 @@ class GT_SAGA(P2PAlgorithm):  # noqa: N801
     Gradient Tracking with SAGA variance reduction :footcite:p:`Alg_GT_SAGA_2020, Alg_GT_SAGA_2022`.
 
     Args:
-        iterations: Total number of iterations
         step_size: Step size for local updates
         x0: Initial parameters (optional)
         name: Algorithm name (default "GT-SAGA")
@@ -35,7 +34,6 @@ class GT_SAGA(P2PAlgorithm):  # noqa: N801
 
     """
 
-    iterations: int = 100
     step_size: float = 0.01
     x0: InitialStates = None  # Initial parameters (optional)
     name: str = "GT-SAGA"
@@ -45,7 +43,7 @@ class GT_SAGA(P2PAlgorithm):  # noqa: N801
         Validate parameters.
 
         Raises:
-            ValueError: If any of the parameters are invalid (e.g., non-positive iterations, local_steps,
+            ValueError: If any of the algorithm parameters are invalid (e.g., non-positive local_steps,
             step_size, penalty, or alpha).
 
         """

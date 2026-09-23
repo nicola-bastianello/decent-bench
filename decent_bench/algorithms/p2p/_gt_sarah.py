@@ -23,7 +23,6 @@ class GT_SARAH(P2PAlgorithm):  # noqa: N801
     GT-SARAH: Gradient Tracking with SARAH variance reduction :footcite:p:`Alg_GT_SARAH`.
 
     Args:
-        iterations: Total number of outer loops (S)
         num_local_steps: Number of inner loop iterations (q)
         step_size: Step size (alpha) for updates
         x0: Initial parameters (optional)
@@ -36,7 +35,6 @@ class GT_SARAH(P2PAlgorithm):  # noqa: N801
 
     """
 
-    iterations: int = 100  # S: number of outer loops
     num_local_steps: int = 5  # q: number of inner loop iterations
     step_size: float = 0.01  # alpha: step size
     x0: InitialStates = None  # Initial parameters (optional)
@@ -47,7 +45,7 @@ class GT_SARAH(P2PAlgorithm):  # noqa: N801
         Validate parameters.
 
         Raises:
-            ValueError: If any of the parameters are invalid (e.g., non-positive iterations, local_steps,
+            ValueError: If any of the algorithm parameters are invalid (e.g., non-positive local_steps,
             step_size, penalty, or alpha).
 
         """

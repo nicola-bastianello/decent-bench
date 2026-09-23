@@ -81,8 +81,8 @@ def _make_fed_network(*costs: Cost) -> tuple[FedNetwork, list[Agent]]:
 @pytest.mark.parametrize(
     ("algorithm_cls", "kwargs"),
     [
-        pytest.param(FedAvg, {"iterations": 1, "step_size": 1.0}, id="fedavg"),
-        pytest.param(FedProx, {"iterations": 1, "step_size": 1.0}, id="fedprox"),
+        pytest.param(FedAvg, {"step_size": 1.0}, id="fedavg"),
+        pytest.param(FedProx, {"step_size": 1.0}, id="fedprox"),
     ],
 )
 def test_aggregation_uses_only_received_client_updates(algorithm_cls: type, kwargs: dict[str, float | int]) -> None:
@@ -99,8 +99,8 @@ def test_aggregation_uses_only_received_client_updates(algorithm_cls: type, kwar
 @pytest.mark.parametrize(
     ("algorithm_cls", "kwargs"),
     [
-        pytest.param(FedAvg, {"iterations": 1, "step_size": 1.0}, id="fedavg"),
-        pytest.param(FedProx, {"iterations": 1, "step_size": 1.0}, id="fedprox"),
+        pytest.param(FedAvg, {"step_size": 1.0}, id="fedavg"),
+        pytest.param(FedProx, {"step_size": 1.0}, id="fedprox"),
     ],
 )
 def test_default_aggregation_is_uniform(algorithm_cls: type, kwargs: dict[str, float | int]) -> None:
@@ -121,8 +121,8 @@ def test_default_aggregation_is_uniform(algorithm_cls: type, kwargs: dict[str, f
 @pytest.mark.parametrize(
     ("algorithm_cls", "kwargs"),
     [
-        pytest.param(FedAvg, {"iterations": 1, "step_size": 1.0}, id="fedavg"),
-        pytest.param(FedProx, {"iterations": 1, "step_size": 1.0}, id="fedprox"),
+        pytest.param(FedAvg, {"step_size": 1.0}, id="fedavg"),
+        pytest.param(FedProx, {"step_size": 1.0}, id="fedprox"),
     ],
 )
 def test_aggregation_keeps_server_state_when_no_updates_are_received(
@@ -140,8 +140,8 @@ def test_aggregation_keeps_server_state_when_no_updates_are_received(
 @pytest.mark.parametrize(
     ("algorithm_cls", "kwargs"),
     [
-        pytest.param(FedAvg, {"iterations": 2, "step_size": 1.0}, id="fedavg"),
-        pytest.param(FedProx, {"iterations": 2, "step_size": 1.0}, id="fedprox"),
+        pytest.param(FedAvg, {"step_size": 1.0}, id="fedavg"),
+        pytest.param(FedProx, {"step_size": 1.0}, id="fedprox"),
     ],
 )
 def test_clients_without_server_broadcast_do_not_participate(
@@ -172,13 +172,12 @@ def test_clients_without_server_broadcast_do_not_participate(
     [
         pytest.param(
             FedAdagrad,
-            {"iterations": 1, "step_size": 1.0, "server_step_size": 1.0, "beta_1": 0.0, "epsilon": 1.0},
+            {"step_size": 1.0, "server_step_size": 1.0, "beta_1": 0.0, "epsilon": 1.0},
             id="fedadagrad",
         ),
         pytest.param(
             FedYogi,
             {
-                "iterations": 1,
                 "step_size": 1.0,
                 "server_step_size": 1.0,
                 "beta_1": 0.0,
@@ -190,7 +189,6 @@ def test_clients_without_server_broadcast_do_not_participate(
         pytest.param(
             FedAdam,
             {
-                "iterations": 1,
                 "step_size": 1.0,
                 "server_step_size": 1.0,
                 "beta_1": 0.0,
@@ -223,14 +221,13 @@ def test_fedopt_aggregation_is_uniform(algorithm_cls: type, kwargs: dict[str, fl
     [
         pytest.param(
             FedAdagrad,
-            {"iterations": 1, "step_size": 1.0, "server_step_size": 1.0, "beta_1": 0.0, "epsilon": 1.0},
+            {"step_size": 1.0, "server_step_size": 1.0, "beta_1": 0.0, "epsilon": 1.0},
             4.0,
             id="fedadagrad",
         ),
         pytest.param(
             FedYogi,
             {
-                "iterations": 1,
                 "step_size": 1.0,
                 "server_step_size": 1.0,
                 "beta_1": 0.0,
@@ -243,7 +240,6 @@ def test_fedopt_aggregation_is_uniform(algorithm_cls: type, kwargs: dict[str, fl
         pytest.param(
             FedAdam,
             {
-                "iterations": 1,
                 "step_size": 1.0,
                 "server_step_size": 1.0,
                 "beta_1": 0.0,
@@ -276,13 +272,12 @@ def test_fedopt_aggregation_uses_only_received_client_deltas(
     [
         pytest.param(
             FedAdagrad,
-            {"iterations": 1, "step_size": 1.0, "server_step_size": 1.0, "beta_1": 0.25, "epsilon": 1.0},
+            {"step_size": 1.0, "server_step_size": 1.0, "beta_1": 0.25, "epsilon": 1.0},
             id="fedadagrad",
         ),
         pytest.param(
             FedYogi,
             {
-                "iterations": 1,
                 "step_size": 1.0,
                 "server_step_size": 1.0,
                 "beta_1": 0.25,
@@ -294,7 +289,6 @@ def test_fedopt_aggregation_uses_only_received_client_deltas(
         pytest.param(
             FedAdam,
             {
-                "iterations": 1,
                 "step_size": 1.0,
                 "server_step_size": 1.0,
                 "beta_1": 0.25,
@@ -328,7 +322,7 @@ def test_fedopt_aggregation_keeps_server_state_when_no_updates_are_received(
     [
         pytest.param(
             FedAdagrad,
-            {"iterations": 1, "step_size": 1.0, "server_step_size": 2.0, "beta_1": 0.5, "epsilon": 1.0},
+            {"step_size": 1.0, "server_step_size": 2.0, "beta_1": 0.5, "epsilon": 1.0},
             2.0,
             4.0,
             13.0,
@@ -337,7 +331,6 @@ def test_fedopt_aggregation_keeps_server_state_when_no_updates_are_received(
         pytest.param(
             FedYogi,
             {
-                "iterations": 1,
                 "step_size": 1.0,
                 "server_step_size": 2.0,
                 "beta_1": 0.5,
@@ -352,7 +345,6 @@ def test_fedopt_aggregation_keeps_server_state_when_no_updates_are_received(
         pytest.param(
             FedAdam,
             {
-                "iterations": 1,
                 "step_size": 1.0,
                 "server_step_size": 2.0,
                 "beta_1": 0.5,
@@ -397,13 +389,12 @@ def test_fedopt_server_state_updates_follow_variant_formula(
     [
         pytest.param(
             FedAdagrad,
-            {"iterations": 2, "step_size": 1.0, "server_step_size": 1.0, "beta_1": 0.0, "epsilon": 1.0},
+            {"step_size": 1.0, "server_step_size": 1.0, "beta_1": 0.0, "epsilon": 1.0},
             id="fedadagrad",
         ),
         pytest.param(
             FedYogi,
             {
-                "iterations": 2,
                 "step_size": 1.0,
                 "server_step_size": 1.0,
                 "beta_1": 0.0,
@@ -415,7 +406,6 @@ def test_fedopt_server_state_updates_follow_variant_formula(
         pytest.param(
             FedAdam,
             {
-                "iterations": 2,
                 "step_size": 1.0,
                 "server_step_size": 1.0,
                 "beta_1": 0.0,
@@ -456,9 +446,9 @@ def test_fedopt_clients_without_server_broadcast_do_not_participate(
 @pytest.mark.parametrize(
     ("algorithm_cls", "kwargs"),
     [
-        pytest.param(FedAdagrad, {"iterations": 1, "step_size": 1.0}, id="fedadagrad"),
-        pytest.param(FedYogi, {"iterations": 1, "step_size": 1.0}, id="fedyogi"),
-        pytest.param(FedAdam, {"iterations": 1, "step_size": 1.0}, id="fedadam"),
+        pytest.param(FedAdagrad, {"step_size": 1.0}, id="fedadagrad"),
+        pytest.param(FedYogi, {"step_size": 1.0}, id="fedyogi"),
+        pytest.param(FedAdam, {"step_size": 1.0}, id="fedadam"),
     ],
 )
 def test_fedopt_local_uploads_are_model_deltas(algorithm_cls: type, kwargs: dict[str, float | int]) -> None:

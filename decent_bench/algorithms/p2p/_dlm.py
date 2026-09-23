@@ -37,7 +37,6 @@ class DLM(P2PAlgorithm):
 
     """
 
-    iterations: int = 100
     step_size: float = 0.001
     penalty: float = 1
     x0: InitialStates = None

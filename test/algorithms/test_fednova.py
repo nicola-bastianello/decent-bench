@@ -110,9 +110,9 @@ def _make_fed_network(*client_specs: float | tuple[float, int]) -> FedNetwork:
     return FedNetwork(clients=clients)
 
 
-def _run_fed_algorithm(network: FedNetwork, algorithm: FedAvg | FedNova) -> np.ndarray:
+def _run_fed_algorithm(network: FedNetwork, algorithm: FedAvg | FedNova, iterations: int = 1) -> np.ndarray:
     algorithm.initialize(network)
-    for iteration in range(algorithm.iterations):
+    for iteration in range(iterations):
         network._step(iteration)  # noqa: SLF001
         algorithm.step(network, iteration)
     return np.copy(network.server().x.value)
@@ -176,7 +176,7 @@ def _expected_single_client_fednova(
 def test_fednova_supports_heterogeneous_local_steps() -> None:
     network = _make_fed_network(1.0, 3.0)
     clients = network.clients()
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps={clients[0]: 1, clients[1]: 3})
+    algorithm = FedNova(step_size=1.0, num_local_steps={clients[0]: 1, clients[1]: 3})
 
     algorithm.initialize(network)
     network._step(0)  # noqa: SLF001
@@ -188,8 +188,8 @@ def test_fednova_supports_heterogeneous_local_steps() -> None:
 def test_plain_fednova_equals_fedavg_when_local_steps_and_aggregation_weights_match() -> None:
     fednova_network = _make_fed_network(1.0, 3.0)
     fedavg_network = _make_fed_network(1.0, 3.0)
-    fednova = FedNova(iterations=1, step_size=1.0, num_local_steps=2)
-    fedavg = FedAvg(iterations=1, step_size=1.0, num_local_steps=2)
+    fednova = FedNova(step_size=1.0, num_local_steps=2)
+    fedavg = FedAvg(step_size=1.0, num_local_steps=2)
 
     fednova_server_x = _run_fed_algorithm(fednova_network, fednova)
     fedavg_server_x = _run_fed_algorithm(fedavg_network, fedavg)
@@ -203,7 +203,7 @@ def test_fednova_copies_local_step_mapping_on_initialize() -> None:
     network = _make_fed_network(1.0, 3.0)
     clients = network.clients()
     local_steps = {clients[0]: 1, clients[1]: 3}
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=local_steps)
+    algorithm = FedNova(step_size=1.0, num_local_steps=local_steps)
 
     algorithm.initialize(network)
     local_steps[clients[0]] = 7
@@ -216,7 +216,7 @@ def test_fednova_copies_local_step_mapping_on_initialize() -> None:
 def test_fednova_normalizes_scalar_local_steps_to_client_mapping_on_initialize() -> None:
     network = _make_fed_network(1.0, 3.0)
     clients = network.clients()
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=2)
+    algorithm = FedNova(step_size=1.0, num_local_steps=2)
 
     algorithm.initialize(network)
 
@@ -225,7 +225,7 @@ def test_fednova_normalizes_scalar_local_steps_to_client_mapping_on_initialize()
 
 def test_fednova_resolves_client_sample_counts_once_on_initialize(monkeypatch: pytest.MonkeyPatch) -> None:
     network = _make_fed_network((1.0, 1), (3.0, 3))
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = FedNova(step_size=1.0, num_local_steps=1)
     infer_client_data_size_calls = 0
 
     def _tracking_infer_client_data_size(client: Agent) -> float:
@@ -316,12 +316,12 @@ def test_fednova_matches_scalar_pseudocode_for_option_combinations(
 ) -> None:
     del test_id
     network = _make_fed_network(1.0)
-    algorithm = FedNova(iterations=iterations, step_size=1.0, num_local_steps=local_steps, **kwargs)
+    algorithm = FedNova(step_size=1.0, num_local_steps=local_steps, **kwargs)
 
     expected_server_x = _expected_single_client_fednova(
         gradient_value=1.0,
-        iterations=iterations,
         local_steps=local_steps,
+        iterations=iterations,
         step_size=1.0,
         use_momentum=bool(kwargs.get("use_momentum", False)),
         momentum=float(kwargs.get("momentum", 0.9)),
@@ -331,14 +331,14 @@ def test_fednova_matches_scalar_pseudocode_for_option_combinations(
         server_momentum=float(kwargs.get("server_momentum", 0.9)),
     )
 
-    actual_server_x = _run_fed_algorithm(network, algorithm)
+    actual_server_x = _run_fed_algorithm(network, algorithm, iterations)
 
     np.testing.assert_allclose(actual_server_x, np.array([expected_server_x]))
 
 
 def test_fednova_uses_data_proportional_client_weights() -> None:
     network = _make_fed_network((1.0, 1), (3.0, 3))
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = FedNova(step_size=1.0, num_local_steps=1)
 
     algorithm.initialize(network)
     network._step(0)  # noqa: SLF001
@@ -350,7 +350,7 @@ def test_fednova_uses_data_proportional_client_weights() -> None:
 def test_fednova_uploads_normalizer_then_cumulative_gradient() -> None:
     network = _make_fed_network((2.0, 1), (4.0, 3))
     clients = network.clients()
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps={clients[0]: 2, clients[1]: 1})
+    algorithm = FedNova(step_size=1.0, num_local_steps={clients[0]: 2, clients[1]: 1})
 
     algorithm.initialize(network)
     network._step(0)  # noqa: SLF001
@@ -368,7 +368,7 @@ def test_fednova_uploads_normalizer_then_cumulative_gradient() -> None:
 def test_fednova_stores_client_sample_counts_on_server_initialize() -> None:
     network = _make_fed_network((2.0, 1), (4.0, 3))
     clients = network.clients()
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = FedNova(step_size=1.0, num_local_steps=1)
 
     algorithm.initialize(network)
 
@@ -378,7 +378,7 @@ def test_fednova_stores_client_sample_counts_on_server_initialize() -> None:
 def test_fednova_renormalizes_client_weights_over_received_subset() -> None:
     network = _make_fed_network((1.0, 1), (10.0, 3))
     clients = network.clients()
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = FedNova(step_size=1.0, num_local_steps=1)
 
     algorithm.initialize(network)
     network._step(0)  # noqa: SLF001
@@ -399,7 +399,7 @@ def test_fednova_renormalizes_client_weights_over_received_subset() -> None:
 def test_fednova_aggregate_rejects_non_positive_normalizer() -> None:
     network = _make_fed_network((2.0, 1), (4.0, 3))
     clients = network.clients()
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = FedNova(step_size=1.0, num_local_steps=1)
 
     algorithm.initialize(network)
     network._step(0)  # noqa: SLF001
@@ -426,7 +426,7 @@ def test_fednova_skips_round_when_all_normalizer_uploads_are_dropped() -> None:
         server=server,
         message_drop={server: NoDrops(), clients[0]: DropOnCalls({1}), clients[1]: DropOnCalls({1})},
     )
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = FedNova(step_size=1.0, num_local_steps=1)
 
     algorithm.initialize(network)
     network._step(0)  # noqa: SLF001
@@ -446,7 +446,7 @@ def test_fednova_uses_only_clients_with_both_uploads(dropped_calls: set[int]) ->
         server=server,
         message_drop={server: NoDrops(), clients[0]: DropOnCalls(dropped_calls), clients[1]: NoDrops()},
     )
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=1)
+    algorithm = FedNova(step_size=1.0, num_local_steps=1)
 
     algorithm.initialize(network)
     network._step(0)  # noqa: SLF001
@@ -460,11 +460,10 @@ def test_fednova_differs_from_fedavg_when_local_steps_are_heterogeneous() -> Non
     fedavg_network = _make_fed_network(1.0, 3.0)
     fednova_clients = fednova_network.clients()
     fednova = FedNova(
-        iterations=1,
         step_size=1.0,
         num_local_steps={fednova_clients[0]: 1, fednova_clients[1]: 3},
     )
-    fedavg = FedAvg(iterations=1, step_size=1.0, num_local_steps=1)
+    fedavg = FedAvg(step_size=1.0, num_local_steps=1)
 
     fednova.initialize(fednova_network)
     fedavg.initialize(fedavg_network)
@@ -485,11 +484,10 @@ def test_fednova_differs_from_uniform_weighting_when_client_sizes_differ() -> No
     fedavg_network = _make_fed_network((1.0, 1), (3.0, 3))
     fednova_clients = fednova_network.clients()
     fednova = FedNova(
-        iterations=1,
         step_size=1.0,
         num_local_steps={fednova_clients[0]: 1, fednova_clients[1]: 3},
     )
-    fedavg = FedAvg(iterations=1, step_size=1.0, num_local_steps=1)
+    fedavg = FedAvg(step_size=1.0, num_local_steps=1)
 
     fednova.initialize(fednova_network)
     fedavg.initialize(fedavg_network)
@@ -507,25 +505,25 @@ def test_fednova_differs_from_uniform_weighting_when_client_sizes_differ() -> No
 
 def test_fednova_rejects_sequence_num_local_steps() -> None:
     with pytest.raises(TypeError, match="`num_local_steps` must be an int or a mapping from Agent"):
-        FedNova(iterations=1, step_size=1.0, num_local_steps=[1, 3])
+        FedNova(step_size=1.0, num_local_steps=[1, 3])
 
 
 @pytest.mark.parametrize("num_local_steps", [0, -1])
 def test_fednova_rejects_invalid_scalar_num_local_steps(num_local_steps: int) -> None:
     with pytest.raises(ValueError, match="`num_local_steps` must be positive"):
-        FedNova(iterations=1, step_size=1.0, num_local_steps=num_local_steps)
+        FedNova(step_size=1.0, num_local_steps=num_local_steps)
 
 
 @pytest.mark.parametrize("num_local_steps", [1.5])
 def test_fednova_rejects_non_integer_scalar_num_local_steps(num_local_steps: object) -> None:
     with pytest.raises(TypeError, match="`num_local_steps` must be an int or a mapping from Agent"):
-        FedNova(iterations=1, step_size=1.0, num_local_steps=num_local_steps)
+        FedNova(step_size=1.0, num_local_steps=num_local_steps)
 
 
 @pytest.mark.parametrize("num_local_steps", [{}, {"not-an-agent": 1}, {1: 1}])
 def test_fednova_rejects_local_step_mappings_missing_network_clients(num_local_steps: object) -> None:
     network = _make_fed_network(1.0, 3.0)
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps=num_local_steps)
+    algorithm = FedNova(step_size=1.0, num_local_steps=num_local_steps)
 
     with pytest.raises(ValueError, match="`num_local_steps` mapping must provide a value for every network client"):
         algorithm.initialize(network)
@@ -535,14 +533,14 @@ def test_fednova_rejects_local_step_mappings_missing_network_clients(num_local_s
 def test_fednova_rejects_invalid_local_step_mapping_values(step_value: float) -> None:
     client = Agent(TrackingCost())
     with pytest.raises(ValueError, match="`num_local_steps` must have positive values"):
-        FedNova(iterations=1, step_size=1.0, num_local_steps={client: step_value})
+        FedNova(step_size=1.0, num_local_steps={client: step_value})
 
 
 @pytest.mark.parametrize("step_value", [2.0])
 def test_fednova_rejects_non_integer_local_step_mapping_values(step_value: object) -> None:
     client = Agent(TrackingCost())
     with pytest.raises(TypeError, match="`num_local_steps` mapping values must be integers"):
-        FedNova(iterations=1, step_size=1.0, num_local_steps={client: step_value})
+        FedNova(step_size=1.0, num_local_steps={client: step_value})
 
 
 @pytest.mark.parametrize(
@@ -557,14 +555,13 @@ def test_fednova_rejects_non_integer_local_step_mapping_values(step_value: objec
 )
 def test_fednova_rejects_invalid_hyperparameters(kwargs: dict[str, float], expected_message: str) -> None:
     with pytest.raises(ValueError, match=expected_message):
-        FedNova(iterations=1, step_size=1.0, num_local_steps=1, **kwargs)
+        FedNova(step_size=1.0, num_local_steps=1, **kwargs)
 
 
 def test_fednova_rejects_local_step_mappings_that_do_not_match_network_clients() -> None:
     network = _make_fed_network(1.0, 3.0)
     other_network = _make_fed_network(2.0)
     algorithm = FedNova(
-        iterations=1,
         step_size=1.0,
         num_local_steps={network.clients()[0]: 1, other_network.clients()[0]: 3},
     )
@@ -576,7 +573,7 @@ def test_fednova_rejects_local_step_mappings_that_do_not_match_network_clients()
 def test_fednova_rejects_local_step_mappings_missing_clients() -> None:
     network = _make_fed_network(1.0, 3.0)
     clients = network.clients()
-    algorithm = FedNova(iterations=1, step_size=1.0, num_local_steps={clients[0]: 1})
+    algorithm = FedNova(step_size=1.0, num_local_steps={clients[0]: 1})
 
     with pytest.raises(ValueError, match="missing clients"):
         algorithm.initialize(network)
@@ -587,7 +584,6 @@ def test_fednova_ignores_local_step_mappings_for_unknown_clients() -> None:
     other_network = _make_fed_network(2.0)
     clients = network.clients()
     algorithm = FedNova(
-        iterations=1,
         step_size=1.0,
         num_local_steps={clients[0]: 1, clients[1]: 3, other_network.clients()[0]: 2},
     )

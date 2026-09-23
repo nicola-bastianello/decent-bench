@@ -55,7 +55,6 @@ class ATG(P2PAlgorithm):
 
     """
 
-    iterations: int = 100
     penalty: float = 1
     relaxation: float = 0.5
     gamma: float = 0.1

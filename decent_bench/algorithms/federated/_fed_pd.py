@@ -65,7 +65,6 @@ class FedPD(FedAlgorithm):
     .. footbibliography::
     """
 
-    iterations: int = 100
     step_size: float = 0.001
     penalty: float = 1.0
     skip_probability: float = 0.0

@@ -24,11 +24,12 @@ if __name__ == "__main__":
 
     results = benchmark.benchmark(
         algorithms=[
-            DGD(iterations=num_iter, step_size=0.1),
-            ED(iterations=num_iter, step_size=0.1),
-            ADMM(iterations=num_iter, penalty=1, relaxation=0.8),
+            DGD(step_size=0.1),
+            ED(step_size=0.1),
+            ADMM(penalty=1, relaxation=0.8),
         ],
         benchmark_problem=problem,
+        iterations=num_iter,
         n_trials=1,
         )
 

@@ -40,7 +40,6 @@ class ATC_Tracking(P2PAlgorithm):  # noqa: N801
 
     """
 
-    iterations: int = 100
     step_size: float = 0.001
     x0: InitialStates = None
     name: str = "ATC-Tracking"

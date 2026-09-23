@@ -81,7 +81,7 @@ class FirstClientSelection(ClientSelectionScheme):
 def test_feddyn_initializes_server_and_client_dynamic_states() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedDyn(iterations=1, x0=Array(np.array([2.0])))
+    algorithm = FedDyn(x0=Array(np.array([2.0])))
 
     algorithm.initialize(network)
 
@@ -95,7 +95,7 @@ def test_feddyn_initializes_server_and_client_dynamic_states() -> None:
 def test_feddyn_one_round_update_follows_dynamic_regularization_formula() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedDyn(iterations=1, step_size=1.0, penalty=1.0)
+    algorithm = FedDyn(step_size=1.0, penalty=1.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -112,7 +112,7 @@ def test_feddyn_one_round_update_follows_dynamic_regularization_formula() -> Non
 def test_feddyn_uses_dynamic_state_in_later_local_updates() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedDyn(iterations=2, step_size=1.0, penalty=1.0)
+    algorithm = FedDyn(step_size=1.0, penalty=1.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -131,7 +131,7 @@ def test_feddyn_uses_dynamic_state_in_later_local_updates() -> None:
 def test_feddyn_partial_participation_leaves_unselected_client_state_unchanged() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(3.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedDyn(iterations=1, step_size=1.0, penalty=1.0, selection_scheme=FirstClientSelection())
+    algorithm = FedDyn(step_size=1.0, penalty=1.0, selection_scheme=FirstClientSelection())
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -148,7 +148,7 @@ def test_feddyn_partial_participation_leaves_unselected_client_state_unchanged()
 def test_feddyn_aggregate_uses_only_received_client_models() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedDyn(iterations=1, penalty=1.0)
+    algorithm = FedDyn(penalty=1.0)
     algorithm.initialize(network)
 
     network.send(sender=clients[0], receiver=network.server(), msg=Array(np.array([2.0])))
@@ -162,7 +162,7 @@ def test_feddyn_aggregate_uses_only_received_client_models() -> None:
 def test_feddyn_aggregate_keeps_server_state_when_no_models_are_received() -> None:
     clients = [Agent(TrackingCost(1.0)), Agent(TrackingCost(2.0))]
     network = FedNetwork(clients=clients)
-    algorithm = FedDyn(iterations=1, penalty=1.0)
+    algorithm = FedDyn(penalty=1.0)
     algorithm.initialize(network)
     network.server().x = np.array([7.0])
     network.server().aux_vars["h"] = np.array([4.0])
@@ -177,7 +177,7 @@ def test_feddyn_clients_without_server_broadcast_do_not_participate() -> None:
     client = Agent(TrackingCost(1.0))
     server = Agent(ZeroCost((1,)))
     network = FedNetwork(clients=[client], server=server, message_drop={server: DropOnCalls({1}), client: NoDrops()})
-    algorithm = FedDyn(iterations=1, step_size=1.0, penalty=1.0)
+    algorithm = FedDyn(step_size=1.0, penalty=1.0)
     algorithm.initialize(network)
 
     network._step(0)  # noqa: SLF001
@@ -199,4 +199,4 @@ def test_feddyn_clients_without_server_broadcast_do_not_participate() -> None:
 )
 def test_feddyn_rejects_invalid_hyperparameters(kwargs: dict[str, float | int], expected_message: str) -> None:
     with pytest.raises(ValueError, match=expected_message):
-        FedDyn(iterations=1, **kwargs)
+        FedDyn(**kwargs)

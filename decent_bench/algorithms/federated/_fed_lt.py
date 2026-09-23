@@ -133,7 +133,6 @@ class FedLT(FedAlgorithm):
     .. footbibliography::
     """
 
-    iterations: int = 100
     step_size: float = 0.001
     num_local_steps: int = 1
     penalty: float = 1.0

@@ -23,7 +23,6 @@ class LT_ADMM_VR(LT_ADMM):  # noqa: N801
     during the local training phase.
 
     Args:
-        iterations: Total number of communication rounds (K)
         num_local_steps: Number of local training steps (tau)
         step_size: Local step size (gamma)
         aux_step_size: Local step size (beta)

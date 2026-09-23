@@ -44,7 +44,6 @@ class FedAvg(FedAlgorithm):
 
     # C=0.1; batch size= inf/10/50 (dataset sizes are bigger; normally 1/10 of the total dataset).
     # E= 5/20 (num local epochs).
-    iterations: int = 100
     step_size: float = 0.001
     num_local_steps: int = 1
     selection_scheme: ClientSelectionScheme | None = field(

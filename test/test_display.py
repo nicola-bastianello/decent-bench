@@ -168,8 +168,8 @@ def _build_federated_benchmark_result(iterations: int = 2) -> tuple[BenchmarkRes
         Agent(QuadraticCost(np.eye(1), np.array([0.0]))),
     ]
     network = FedNetwork(clients=clients)
-    algorithm = FedAvg(iterations=iterations, step_size=0.1)
-    algorithm.run(network)
+    algorithm = FedAvg(step_size=0.1)
+    algorithm.run(network, iterations)
     return BenchmarkResult(problem=BenchmarkProblem(network=network), states={algorithm: [network]}), algorithm
 
 

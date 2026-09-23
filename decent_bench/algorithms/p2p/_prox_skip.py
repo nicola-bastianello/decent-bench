@@ -19,7 +19,6 @@ class ProxSkip(P2PAlgorithm):
     Proximal Skip with local gradient steps :footcite:p:`Alg_Prox_Skip`.
 
     Args:
-        iterations: Total number of iterations (T)
         step_size: Step size alpha > 0 for primal updates
         aux_step_size: Step size beta > 0 for dual updates
         comm_probability: Communication probability 0 < p <= 1 for skipping communication
@@ -31,7 +30,6 @@ class ProxSkip(P2PAlgorithm):
 
     """
 
-    iterations: int = 100  # Total number of iterations (T)
     step_size: float = 0.01  # Step size alpha > 0 for primal updates
     aux_step_size: float = 0.01  # Step size beta > 0 for dual updates
     comm_probability: float = 0.7  # Communication probability 0 < p <= 1
@@ -44,7 +42,7 @@ class ProxSkip(P2PAlgorithm):
         Validate parameters.
 
         Raises:
-            ValueError: If any of the parameters are invalid (e.g., non-positive iterations, local_steps,
+            ValueError: If any of the algorithm parameters are invalid (e.g., non-positive local_steps,
             step_size, penalty, or alpha).
 
         """

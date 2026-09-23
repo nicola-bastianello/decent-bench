@@ -18,7 +18,6 @@ class LT_ADMM(P2PAlgorithm):  # noqa: N801
     Local Training ADMM (LT-ADMM) :footcite:p:`Alg_LT_ADMM_VR`.
 
     Args:
-        iterations: Total number of communication rounds (K)
         num_local_steps: Number of local training steps (tau)
         step_size: Local step size (gamma)
         aux_step_size: Local step size (beta)
@@ -31,7 +30,6 @@ class LT_ADMM(P2PAlgorithm):  # noqa: N801
 
     """
 
-    iterations: int = 100  # Total number of communication rounds (K)
     num_local_steps: int = 5  # Number of local training steps (tau)
     step_size: float = 0.01  # Local step size (gamma)
     aux_step_size: float = 0.01  # Local step size (beta)
@@ -45,7 +43,7 @@ class LT_ADMM(P2PAlgorithm):  # noqa: N801
         Validate parameters.
 
         Raises:
-            ValueError: If any of the parameters are invalid (e.g., non-positive iterations, local_steps,
+            ValueError: If any of the algorithm parameters are invalid (e.g., non-positive local_steps,
             step_size, penalty, or relaxation).
 
         """

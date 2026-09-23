@@ -51,7 +51,6 @@ class ADMM(P2PAlgorithm):
 
     """
 
-    iterations: int = 100
     penalty: float = 1
     relaxation: float = 0.5
     x0: InitialStates = None

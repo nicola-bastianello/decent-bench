@@ -26,7 +26,6 @@ class DiNNO(P2PAlgorithm):
     then repeated for a number of iterations.
 
     Args:
-        iterations: Total number of outer iterations (K)
         step_size: Step size for primal updates
         num_local_steps: Number of inner iterations (B) for approximate primal update
         penalty: Penalty parameter (rho) for augmented Lagrangian
@@ -37,7 +36,6 @@ class DiNNO(P2PAlgorithm):
 
     """
 
-    iterations: int = 100  # Total number of outer iterations (K)
     step_size: float = 0.01
     num_local_steps: int = 5  # Number of inner iterations (B) for approximate primal update
     penalty: float = 0.5  # Penalty parameter (rho) for augmented Lagrangian
@@ -49,7 +47,7 @@ class DiNNO(P2PAlgorithm):
         Validate parameters.
 
         Raises:
-            ValueError: If any of the parameters are invalid (e.g., non-positive iterations, local_steps,
+            ValueError: If any of the algorithm parameters are invalid (e.g., non-positive local_steps,
             step_size, penalty, or alpha).
 
         """

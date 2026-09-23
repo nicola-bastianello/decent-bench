@@ -116,7 +116,6 @@ class FedNova(FedAlgorithm):
     .. footbibliography::
     """
 
-    iterations: int = 100
     step_size: float = 0.001
     num_local_steps: LocalSteps = 1
     use_momentum: bool = False
