@@ -1,9 +1,9 @@
 import json
 import pickle
-import re
 import shutil
 from dataclasses import replace
 from datetime import datetime
+from math import ceil
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
@@ -23,7 +23,6 @@ from decent_bench.utils._logger import LOGGER
 # Zstandard magic number as a signed int, which makes it negative.
 # `int.to_bytes(..., signed=False)` then raises: OverflowError: can't convert negative int to unsigned
 _ZSTD_MAGIC = (int(zstd.MAGIC_NUMBER) & 0xFFFFFFFF).to_bytes(4, "little")
-_CHECKPOINT_NAME_RE = re.compile(r"^checkpoint_(\d+)\.pkl(?:\.zst)?$")
 _AGENT_HASH_DICT_MARKER = "__agent_hash_keyed__"
 
 
@@ -107,11 +106,8 @@ class CheckpointManager:
         checkpoint_dir: Path to save checkpoints during execution. If provided, progress will be saved
             at regular intervals allowing resumption if interrupted. When starting a new benchmark
             the directory must be empty or non-existent.
-        checkpoint_step: Number of iterations between checkpoints within each trial.
-            If ``None``, only save at the end of each trial. For long-running algorithms,
-            set this to checkpoint during trial execution (e.g., every 1000 iterations).
-        keep_n_checkpoints: Maximum number of iteration checkpoints to keep per trial.
-            Older checkpoints are automatically deleted to save disk space.
+        n_checkpoints: Number of checkpoints to take per trial, spaced evenly across the run.
+            The final iteration is always checkpointed. A value of 1 saves only the final iteration.
         benchmark_metadata: Optional dictionary of additional metadata to save in the checkpoint directory,
                 such as hyperparameters or system information. This can be useful for keeping track of the benchmark
                 configuration and context when analyzing results later.
@@ -122,16 +118,14 @@ class CheckpointManager:
             the size of the checkpoint data and performance requirements.
 
     Raises:
-        ValueError: If checkpoint_step is not a positive integer or ``None``.
-        ValueError: If keep_n_checkpoints is not a positive integer.
+        ValueError: If ``n_checkpoints`` is not a positive integer.
 
     """
 
     def __init__(
         self,
         checkpoint_dir: str | Path,
-        checkpoint_step: int | None = None,
-        keep_n_checkpoints: int = 3,
+        n_checkpoints: int = 3,
         benchmark_metadata: dict[str, Any] | None = None,
         compression_level: int = 1,
     ) -> None:
@@ -142,11 +136,8 @@ class CheckpointManager:
             checkpoint_dir: Path to save checkpoints during execution. If provided, progress will be saved
                 at regular intervals allowing resumption if interrupted. When starting a new benchmark
                 the directory must be empty or non-existent.
-            checkpoint_step: Number of iterations between checkpoints within each trial.
-                If ``None``, only save at the end of each trial. For long-running algorithms,
-                set this to checkpoint during trial execution (e.g., every 1000 iterations).
-            keep_n_checkpoints: Maximum number of iteration checkpoints to keep per trial.
-                Older checkpoints are automatically deleted to save disk space.
+            n_checkpoints: Number of checkpoints to take per trial, spaced evenly across the run.
+                The final iteration is always checkpointed. A value of 1 saves only the final iteration.
             benchmark_metadata: Optional dictionary of additional metadata to save in the checkpoint directory,
                     such as hyperparameters or system information. This can be useful for keeping track of the benchmark
                     configuration and context when analyzing results later.
@@ -157,18 +148,14 @@ class CheckpointManager:
                 on the size of the checkpoint data and performance requirements.
 
         Raises:
-            ValueError: If checkpoint_step is not a positive integer or ``None``.
-            ValueError: If keep_n_checkpoints is not a positive integer.
+            ValueError: If ``n_checkpoints`` is not a positive integer.
 
         """
-        if checkpoint_step is not None and checkpoint_step <= 0:
-            raise ValueError(f"checkpoint_step must be a positive integer or None, got {checkpoint_step}")
-        if keep_n_checkpoints <= 0:
-            raise ValueError(f"keep_n_checkpoints must be a positive integer, got {keep_n_checkpoints}")
+        if n_checkpoints <= 0:
+            raise ValueError(f"n_checkpoints must be a positive integer, got {n_checkpoints}")
 
         self.checkpoint_dir = Path(checkpoint_dir)
-        self.checkpoint_step = checkpoint_step
-        self.keep_n_checkpoints = keep_n_checkpoints
+        self.n_checkpoints = n_checkpoints
         self._metadata = benchmark_metadata
         self.compression_level = compression_level
 
@@ -201,6 +188,7 @@ class CheckpointManager:
         metadata: dict[str, Any] = {
             "n_trials": n_trials,
             "iterations": iterations,
+            "n_checkpoints": self.n_checkpoints,
             "algorithms": [
                 {
                     "name": alg.name,
@@ -295,15 +283,17 @@ class CheckpointManager:
         problem_path = self._resolve_data_file("benchmark_problem.pkl.zst", "benchmark_problem.pkl")
         return cast("BenchmarkProblem", self._load_pickle(problem_path))
 
-    def should_checkpoint(self, iteration: int) -> bool:
+    def should_checkpoint(self, iteration: int, iterations: int) -> bool:
         """
         Determine if a checkpoint should be saved at the current iteration.
 
         Checkpointing occurs if:
-            - checkpoint_step is set and iteration is a multiple of checkpoint_step
+            - the iteration is one of ``n_checkpoints`` equally spaced points in the run
+            - the iteration is the final iteration
 
         Args:
             iteration: Current iteration number.
+            iterations: Total iterations in the run.
 
         Returns:
             True if a checkpoint should be saved, False otherwise.
@@ -312,13 +302,20 @@ class CheckpointManager:
             ValueError: If iteration number is negative.
 
         """
-        if self.checkpoint_step is None:
-            return False
-
         if iteration < 0:
             raise ValueError(f"Iteration number must be non-negative, got {iteration}")
+        if iterations <= 0:
+            raise ValueError(f"Iterations must be positive, got {iterations}")
 
-        return (iteration + 1) % self.checkpoint_step == 0
+        return iteration + 1 in self._checkpoint_iterations(iterations)
+
+    def _checkpoint_iterations(self, n_iterations: int) -> set[int]:
+        """Return completed-iteration counts at which checkpoints should be saved."""
+        n_checkpoints = min(self.n_checkpoints, n_iterations)
+        if n_checkpoints == 0:
+            return set()
+
+        return {ceil(i * n_iterations / n_checkpoints) for i in range(1, n_checkpoints + 1)}
 
     def save_checkpoint(
         self,
@@ -378,7 +375,6 @@ class CheckpointManager:
 
         LOGGER.debug(f"Saved checkpoint: alg={alg_idx}, trial={trial}, iter={iteration}")
 
-        self._cleanup_old_checkpoints(alg_idx, trial)
         return checkpoint_path
 
     def load_checkpoint(
@@ -837,19 +833,6 @@ class CheckpointManager:
 
         return preferred
 
-    def _checkpoint_iteration(self, path: Path) -> int:
-        """
-        Extract checkpoint iteration from a checkpoint filename.
-
-        Raises:
-            ValueError: If the filename is not a valid checkpoint name.
-
-        """
-        match = _CHECKPOINT_NAME_RE.match(path.name)
-        if match is None:
-            raise ValueError(f"Invalid checkpoint filename: {path.name}")
-        return int(match.group(1))
-
     def _save_pickle(self, path: Path, data: object) -> None:
         """Save Python object as zstd-compressed pickle payload."""
         compressor = zstd.ZstdCompressor(level=self.compression_level)
@@ -867,37 +850,6 @@ class CheckpointManager:
                     return pickle.load(decompressed_reader)  # noqa: S301
             # Fall back to legacy uncompressed pickle for backward compatibility
             return pickle.load(file_obj)  # noqa: S301
-
-    def _cleanup_old_checkpoints(self, alg_idx: int, trial: int) -> None:
-        """
-        Remove old iteration checkpoint files, keeping only the most recent N.
-
-        Args:
-            alg_idx: Algorithm index (0-based).
-            trial: Trial number (0-based).
-
-        """
-        trial_dir = self._get_trial_dir(alg_idx, trial)
-        if not trial_dir.exists():
-            return
-
-        # Find all iteration checkpoint files
-        checkpoint_files = [
-            *trial_dir.glob("checkpoint_*.pkl"),
-            *trial_dir.glob("checkpoint_*.pkl.zst"),
-        ]
-        # Sort by iteration number in filename (checkpoint_0000100.pkl.zst -> 100)
-        checkpoint_files.sort(key=self._checkpoint_iteration, reverse=True)
-
-        # Remove older checkpoints
-        if len(checkpoint_files) > self.keep_n_checkpoints:
-            for file_to_remove in checkpoint_files[self.keep_n_checkpoints :]:
-                try:
-                    file_to_remove.unlink()
-                    LOGGER.debug(f"Removed old checkpoint: {file_to_remove}")
-                except FileNotFoundError:
-                    LOGGER.debug(f"Checkpoint file already removed by another process: {file_to_remove}")
-
 
 def _compact_algorithm_agent_dicts_inplace(algorithm: Algorithm[Network]) -> dict[str, dict[Any, Any]]:
     """Temporarily replace algorithm dict attributes keyed by Agent with hash(Agent)."""

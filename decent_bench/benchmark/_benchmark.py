@@ -132,6 +132,8 @@ def resume_benchmark(  # noqa: PLR0912, PLR0915
             metadata = checkpoint_manager.load_metadata()
             if metadata is None or "n_trials" not in metadata or "iterations" not in metadata:
                 raise ValueError("Invalid or missing metadata in checkpoint directory")
+            if "n_checkpoints" in metadata:
+                checkpoint_manager.n_checkpoints = metadata["n_checkpoints"]
 
             problem = checkpoint_manager.load_benchmark_problem()
             if problem is None:
@@ -598,7 +600,7 @@ def _run_trial(  # noqa: PLR0917
 
     def progress_callback(iteration: int) -> None:
         progress_bar_handle.advance_progress_bar(algorithm, iteration, iterations)
-        if checkpoint_manager is not None and checkpoint_manager.should_checkpoint(iteration):
+        if checkpoint_manager is not None and checkpoint_manager.should_checkpoint(iteration, iterations):
             checkpoint_manager.save_checkpoint(
                 alg_idx=alg_idx,
                 trial=trial,

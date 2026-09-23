@@ -46,12 +46,10 @@ Checkpointing options
 The checkpointing behavior can be controlled via these parameters passed to the init of :class:`~decent_bench.utils.checkpoint_manager.CheckpointManager`:
 
 - ``checkpoint_dir``: directory where the checkpoint manager should save results. The folder must be non-existent or empty at init.
-- ``checkpoint_step``: the frequency with which checkpoints are stored; that is, a new checkpoint is stored every ``checkpoint_step`` iterations of an algorithm. If set to ``None``, the algorithms are checkpointed only at the end of the benchmark run.
-- ``keep_n_checkpoints``: as checkpoints are potentially large, this option allows to specify how many of them should be stored at any given time. Defaults to 3.
+- ``n_checkpoints``: the number of checkpoints stored per trial, spaced evenly across the run. The final iteration is always checkpointed. Defaults to 3; set to 1 to checkpoint only the final iteration.
 - ``benchmark_metadata``: optional dictionary to store custom metadata about the benchmark run; this is saved in ``metadata.json``.
 
-Combine a large ``checkpoint_step`` and small ``keep_n_checkpoints`` to reduce both the computational and storage load
-of checkpoints.
+Choose a smaller ``n_checkpoints`` to reduce checkpointing overhead and storage use.
 
 The following example shows a benchmark run with a fully customized :class:`~decent_bench.utils.checkpoint_manager.CheckpointManager`.
    
@@ -62,8 +60,8 @@ The following example shows a benchmark run with a fully customized :class:`~dec
 
 Resuming benchmarks
 ^^^^^^^^^^^^^^^^^^^
-If the previous benchmark is interrupted at any time, using :func:`~decent_bench.benchmark.resume_benchmark`. This will
-complete to run all the trials (``n_trials``) for the specified number of iterations (``iterations`` argument of algorithms).
+If the previous benchmark is interrupted at any time, use :func:`~decent_bench.benchmark.resume_benchmark`. This will
+complete all trials (``n_trials``) for the specified number of iterations (the benchmark's ``iterations`` argument).
 
 .. code-block:: python
 

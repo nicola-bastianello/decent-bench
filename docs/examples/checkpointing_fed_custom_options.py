@@ -11,8 +11,7 @@ if __name__ == "__main__":
 
     cm = CheckpointManager(
         checkpoint_dir="benchmark_results/long_run",
-        checkpoint_step=50,      # checkpoint every 50 iterations
-        keep_n_checkpoints=5,    # keep 5 most recent checkpoints
+        n_checkpoints=5,         # save 5 evenly spaced checkpoints, including the final iteration
         benchmark_metadata={
             "description": "FedAvg v. Scaffold",
             "system": platform.system(),

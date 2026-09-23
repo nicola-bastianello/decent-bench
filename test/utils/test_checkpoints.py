@@ -93,18 +93,15 @@ def _build_problem_and_algorithms(
 
 
 def test_init_validates_arguments(tmp_path: Path) -> None:  # noqa: D103
-    with pytest.raises(ValueError, match="checkpoint_step must be a positive integer or None"):
-        CheckpointManager(tmp_path / "ckpt", checkpoint_step=0)
-
-    with pytest.raises(ValueError, match="keep_n_checkpoints must be a positive integer"):
-        CheckpointManager(tmp_path / "ckpt", keep_n_checkpoints=0)
+    with pytest.raises(ValueError, match="n_checkpoints must be a positive integer"):
+        CheckpointManager(tmp_path / "ckpt", n_checkpoints=-1)
 
 
 def test_checkpoint_restores_top_level_agent_keyed_algorithm_dict(tmp_path: Path) -> None:  # noqa: D103
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     algorithm = algorithms[0]
     algorithm.custom_agent_map = {agent: float(idx) for idx, agent in enumerate(problem.network.agents())}  # type: ignore[attr-defined]
-    manager = CheckpointManager(tmp_path / "ckpt", keep_n_checkpoints=3)
+    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=3)
     manager.initialize(algorithms=[algorithm], problem=problem, n_trials=1, iterations=5)
 
     loaded_algs = manager.load_initial_algorithms(network=problem.network)
@@ -120,7 +117,7 @@ def test_initialize_saves_structure_and_metadata(tmp_path: Path) -> None:  # noq
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     manager = CheckpointManager(
         checkpoint_dir,
-        checkpoint_step=2,
+        n_checkpoints=3,
         benchmark_metadata={"seed": 123},
     )
 
@@ -135,6 +132,8 @@ def test_initialize_saves_structure_and_metadata(tmp_path: Path) -> None:  # noq
 
     metadata = manager.load_metadata()
     assert metadata["n_trials"] == 3
+    assert metadata["iterations"] == 5
+    assert metadata["n_checkpoints"] == 3
     assert metadata["benchmark_metadata"] == {"seed": 123}
     assert [alg["name"] for alg in metadata["algorithms"]] == ["DGD", "ATC", "DummyAlg", "ADMM"]
 
@@ -156,23 +155,29 @@ def test_append_metadata_merges_entries(tmp_path: Path) -> None:  # noqa: D103
 
 
 def test_should_checkpoint_logic(tmp_path: Path) -> None:  # noqa: D103
-    manager = CheckpointManager(tmp_path / "ckpt", checkpoint_step=3)
+    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=3)
 
-    assert manager.should_checkpoint(0) is False
-    assert manager.should_checkpoint(1) is False
-    assert manager.should_checkpoint(2) is True
-    assert manager.should_checkpoint(5) is True
+    checkpoint_iterations = [i for i in range(10) if manager.should_checkpoint(i, 10)]
+    assert checkpoint_iterations == [3, 6, 9]
+
+    assert manager.should_checkpoint(0, 10) is False
+    assert manager.should_checkpoint(1, 10) is False
+    assert manager.should_checkpoint(3, 10) is True
+    assert manager.should_checkpoint(6, 10) is True
 
     with pytest.raises(ValueError, match="Iteration number must be non-negative"):
-        manager.should_checkpoint(-1)
+        manager.should_checkpoint(-1, 10)
 
-    manager_no_step = CheckpointManager(tmp_path / "ckpt_no_step", checkpoint_step=None)
-    assert manager_no_step.should_checkpoint(100) is False
+    manager_one_checkpoint = CheckpointManager(tmp_path / "ckpt_one", n_checkpoints=1)
+    assert manager_one_checkpoint.should_checkpoint(7, 9) is False
+    assert manager_one_checkpoint.should_checkpoint(8, 9) is True
+    assert CheckpointManager(tmp_path / "ckpt_many", n_checkpoints=5)._checkpoint_iterations(3) == {1, 2, 3}
+    assert manager._checkpoint_iterations(0) == set()
 
 
 def test_save_and_load_checkpoint_roundtrip(tmp_path: Path) -> None:  # noqa: D103
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
-    manager = CheckpointManager(tmp_path / "ckpt", keep_n_checkpoints=5)
+    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=5)
     manager.initialize(algorithms=algorithms, problem=problem, n_trials=1, iterations=5)
 
     assert manager.load_checkpoint(alg_idx=0, trial=0) is None
@@ -258,31 +263,6 @@ def test_mark_unmark_and_load_trial_result(tmp_path: Path) -> None:  # noqa: D10
 
     manager.unmark_trial_complete(alg_idx=0, trial=0)
     assert manager.is_trial_complete(alg_idx=0, trial=0) is False
-
-
-def test_cleanup_old_checkpoints_keeps_latest_n(tmp_path: Path) -> None:  # noqa: D103
-    problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
-    manager = CheckpointManager(tmp_path / "ckpt", keep_n_checkpoints=2)
-    manager.initialize(algorithms=algorithms, problem=problem, n_trials=1, iterations=5)
-
-    for iteration in (1, 2, 3):
-        manager.save_checkpoint(
-            alg_idx=0,
-            trial=0,
-            iteration=iteration,
-            algorithm=algorithms[0],
-            network=problem.network,
-            rng_state={"seed": iteration},
-        )
-
-    trial_dir = tmp_path / "ckpt" / "algorithm_0" / "trial_0"
-    checkpoints = sorted(p.name for p in trial_dir.glob("checkpoint_*.pkl.zst"))
-    assert checkpoints == ["checkpoint_0000002.pkl.zst", "checkpoint_0000003.pkl.zst"]
-
-    loaded = manager.load_checkpoint(alg_idx=0, trial=0)
-    assert loaded is not None
-    _, _, iteration, _ = loaded
-    assert iteration == 3
 
 
 def test_load_benchmark_result_skips_incomplete_algorithms(  # noqa: D103
@@ -457,7 +437,7 @@ def test_resume_from_checkpoint_with_additional_trials(
     problem_1, algorithms_1 = _build_problem_and_algorithms(cost_cls=cost_cls)
     problem_2, algorithms_2 = deepcopy(problem_1), deepcopy(algorithms_1)
 
-    manager = CheckpointManager(tmp_path / "ckpt", checkpoint_step=2)
+    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=3)
     bench_1 = benchmark(
         algorithms=algorithms_1,
         benchmark_problem=problem_1,
@@ -561,7 +541,7 @@ def test_resume_from_checkpoint_with_additional_iterations(
     problem_5, algorithms_5 = _build_problem_and_algorithms(cost_cls=cost_cls)
     problem_10, algorithms_10 = deepcopy(problem_5), deepcopy(algorithms_5)
 
-    manager = CheckpointManager(tmp_path / "ckpt", checkpoint_step=2)
+    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=3)
     bench_5 = benchmark(
         algorithms=algorithms_5,
         benchmark_problem=problem_5,
@@ -592,6 +572,19 @@ def test_resume_from_checkpoint_with_additional_iterations(
     # Check that the resumed benchmark has the expected number of iterations and trials.
     assert resumed_bench.iterations == 10
     assert all(len(trials) == 2 for trials in resumed_bench.states.values())
+
+    expected_checkpoint_names = [
+        "checkpoint_0000001.pkl.zst",
+        "checkpoint_0000003.pkl.zst",
+        "checkpoint_0000004.pkl.zst",
+        "checkpoint_0000006.pkl.zst",
+        "checkpoint_0000009.pkl.zst",
+    ]
+    for alg_idx in range(len(algorithms_5)):
+        for trial in range(2):
+            trial_dir = tmp_path / "ckpt" / f"algorithm_{alg_idx}" / f"trial_{trial}"
+            actual_checkpoint_names = sorted(path.name for path in trial_dir.glob("checkpoint_*.pkl.zst"))
+            assert actual_checkpoint_names == expected_checkpoint_names
 
     # Check that the resumed benchmark's problem matches the original.
     assert len(resumed_bench.problem.network.agents()) == 4
@@ -665,7 +658,7 @@ def test_resume_from_checkpoint_with_additional_iterations_and_trials(
     problem_5, algorithms_5 = _build_problem_and_algorithms(cost_cls=cost_cls)
     problem_10, algorithms_10 = deepcopy(problem_5), deepcopy(algorithms_5)
 
-    manager = CheckpointManager(tmp_path / "ckpt", checkpoint_step=2)
+    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=3)
     bench_5 = benchmark(
         algorithms=algorithms_5,
         benchmark_problem=problem_5,
@@ -770,7 +763,7 @@ def test_resume_from_non_completed_checkpoint(
     problem_5, algorithms_5 = _build_problem_and_algorithms(cost_cls=cost_cls)
     problem_10, algorithms_10 = deepcopy(problem_5), deepcopy(algorithms_5)
 
-    manager = CheckpointManager(tmp_path / "ckpt", checkpoint_step=2)
+    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=5)
     bench_5 = benchmark(
         algorithms=algorithms_5,
         benchmark_problem=problem_5,
