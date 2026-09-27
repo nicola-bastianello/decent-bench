@@ -182,10 +182,18 @@ class CheckpointManager:
             iterations: Number of iterations to run algorithms for.
 
         """
+        from decent_bench.benchmark._configure import get_config  # noqa: PLC0415
+
+        config = get_config()
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         # Save metadata
         metadata: dict[str, Any] = {
+            "backend": {"framework": config.framework.value, "device": config.device.value},
+            "checkpointing": {
+                "n_checkpoints": config.n_checkpoints,
+                "compression_level": config.compression_level,
+            },
             "n_trials": n_trials,
             "iterations": iterations,
             "n_checkpoints": self.n_checkpoints,
@@ -850,6 +858,7 @@ class CheckpointManager:
                     return pickle.load(decompressed_reader)  # noqa: S301
             # Fall back to legacy uncompressed pickle for backward compatibility
             return pickle.load(file_obj)  # noqa: S301
+
 
 def _compact_algorithm_agent_dicts_inplace(algorithm: Algorithm[Network]) -> dict[str, dict[Any, Any]]:
     """Temporarily replace algorithm dict attributes keyed by Agent with hash(Agent)."""

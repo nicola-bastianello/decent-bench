@@ -1,4 +1,3 @@
-import logging
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Literal
 
@@ -16,24 +15,21 @@ from decent_bench.metrics import Metric, utils
 from decent_bench.metrics import metric_library as ml
 from decent_bench.metrics._metrics_view import NetworkMetricsView
 from decent_bench.networks import Network
-from decent_bench.utils._logger import LOGGER, start_logger
+from decent_bench.utils._logger import LOGGER
 
 if TYPE_CHECKING:
     from decent_bench.benchmark import BenchmarkProblem
 
 if TYPE_CHECKING:
     from decent_bench.benchmark import BenchmarkProblem
-    from decent_bench.utils.checkpoint_manager import CheckpointManager
 
 
 def compute_metrics(
     benchmark_result: BenchmarkResult | None = None,
-    checkpoint_manager: "CheckpointManager | None" = None,
     *,
     table_metrics: list[Metric] | None = None,
     plot_metrics: list[Metric] | None = None,
     statistics_across_agents: list[str] | None = None,
-    log_level: int = logging.INFO,
 ) -> MetricResult:
     """
     Compute metrics from a benchmark result.
@@ -80,7 +76,10 @@ def compute_metrics(
         finite part of a trajectory, while table metrics are evaluated at the final iteration.
 
     """
-    start_logger(log_level=log_level)
+    from decent_bench.benchmark._configure import get_checkpoint_manager, get_config  # noqa: PLC0415
+
+    get_config()
+    checkpoint_manager = get_checkpoint_manager()
     LOGGER.info("Starting metrics computation")
 
     # 1) user input validation

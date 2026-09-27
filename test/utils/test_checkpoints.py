@@ -16,6 +16,7 @@ import pytest
 import zstandard as zstd
 
 from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 from decent_bench.agents import Agent
 from decent_bench.algorithms import Algorithm
 from decent_bench.algorithms.p2p import ADMM, ATC, DGD
@@ -25,6 +26,7 @@ from decent_bench.benchmark import (
     MetricResult,
     benchmark,
     create_classification_problem,
+    configure,
     resume_benchmark,
 )
 from decent_bench.costs import LogisticRegressionCost, PyTorchCost
@@ -32,6 +34,27 @@ from decent_bench.metrics._metrics_view import NetworkMetricsView
 from decent_bench.networks import Network, P2PNetwork
 from decent_bench.schemes import GaussianNoise, Quantization, UniformActivationRate, UniformDropRate
 from decent_bench.utils.checkpoint_manager import _ZSTD_MAGIC, CheckpointManager  # noqa: PLC2701
+
+
+def _configure_for_checkpoint(
+    storage_dir: Path | None = None,
+    *,
+    n_checkpoints: int = 3,
+    open_existing: bool = False,
+) -> None:
+    """Set up a fresh global configuration for a checkpoint test."""
+    from decent_bench.benchmark import _configure
+
+    _configure._STATE = _configure._ConfigurationState()
+    if open_existing:
+        configure(storage_dir=storage_dir)
+    else:
+        configure(
+            Frameworks.NUMPY,
+            Devices.CPU,
+            storage_dir=storage_dir,
+            n_checkpoints=n_checkpoints,
+        )
 
 try:
     import torch
@@ -98,6 +121,7 @@ def test_init_validates_arguments(tmp_path: Path) -> None:  # noqa: D103
 
 
 def test_checkpoint_restores_top_level_agent_keyed_algorithm_dict(tmp_path: Path) -> None:  # noqa: D103
+    configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     algorithm = algorithms[0]
     algorithm.custom_agent_map = {agent: float(idx) for idx, agent in enumerate(problem.network.agents())}  # type: ignore[attr-defined]
@@ -113,6 +137,7 @@ def test_checkpoint_restores_top_level_agent_keyed_algorithm_dict(tmp_path: Path
 
 
 def test_initialize_saves_structure_and_metadata(tmp_path: Path) -> None:  # noqa: D103
+    configure(Frameworks.NUMPY, Devices.CPU)
     checkpoint_dir = tmp_path / "ckpt"
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     manager = CheckpointManager(
@@ -133,6 +158,8 @@ def test_initialize_saves_structure_and_metadata(tmp_path: Path) -> None:  # noq
     metadata = manager.load_metadata()
     assert metadata["n_trials"] == 3
     assert metadata["iterations"] == 5
+    assert metadata["backend"] == {"framework": Frameworks.NUMPY.value, "device": Devices.CPU.value}
+    assert metadata["checkpointing"] == {"n_checkpoints": 3, "compression_level": 1}
     assert metadata["n_checkpoints"] == 3
     assert metadata["benchmark_metadata"] == {"seed": 123}
     assert [alg["name"] for alg in metadata["algorithms"]] == ["DGD", "ATC", "DummyAlg", "ADMM"]
@@ -145,6 +172,7 @@ def test_initialize_saves_structure_and_metadata(tmp_path: Path) -> None:  # noq
 
 
 def test_append_metadata_merges_entries(tmp_path: Path) -> None:  # noqa: D103
+    configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     manager = CheckpointManager(tmp_path / "ckpt", benchmark_metadata={"seed": 7})
     manager.initialize(algorithms=algorithms, problem=problem, n_trials=1, iterations=5)
@@ -176,6 +204,7 @@ def test_should_checkpoint_logic(tmp_path: Path) -> None:  # noqa: D103
 
 
 def test_save_and_load_checkpoint_roundtrip(tmp_path: Path) -> None:  # noqa: D103
+    configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=5)
     manager.initialize(algorithms=algorithms, problem=problem, n_trials=1, iterations=5)
@@ -212,6 +241,7 @@ def test_save_and_load_checkpoint_roundtrip(tmp_path: Path) -> None:  # noqa: D1
 
 
 def test_load_checkpoint_supports_legacy_uncompressed_pickle(tmp_path: Path) -> None:  # noqa: D103
+    configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     manager = CheckpointManager(tmp_path / "ckpt")
     manager.initialize(algorithms=algorithms, problem=problem, n_trials=1, iterations=5)
@@ -242,6 +272,7 @@ def test_load_checkpoint_supports_legacy_uncompressed_pickle(tmp_path: Path) -> 
 
 
 def test_mark_unmark_and_load_trial_result(tmp_path: Path) -> None:  # noqa: D103
+    configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     manager = CheckpointManager(tmp_path / "ckpt")
     manager.initialize(algorithms=algorithms, problem=problem, n_trials=1, iterations=5)
@@ -268,6 +299,7 @@ def test_mark_unmark_and_load_trial_result(tmp_path: Path) -> None:  # noqa: D10
 def test_load_benchmark_result_skips_incomplete_algorithms(  # noqa: D103
     tmp_path: Path,
 ) -> None:
+    configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     manager = CheckpointManager(tmp_path / "ckpt")
     manager.initialize(algorithms=algorithms, problem=problem, n_trials=2, iterations=5)
@@ -400,6 +432,7 @@ def test_load_metrics_result_reconstructs_only_selected_algorithms(
 
 
 def test_create_backup_and_clear(tmp_path: Path) -> None:  # noqa: D103
+    configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
     manager = CheckpointManager(tmp_path / "ckpt")
     manager.initialize(algorithms=algorithms, problem=problem, n_trials=1, iterations=5)
@@ -437,15 +470,15 @@ def test_resume_from_checkpoint_with_additional_trials(
     problem_1, algorithms_1 = _build_problem_and_algorithms(cost_cls=cost_cls)
     problem_2, algorithms_2 = deepcopy(problem_1), deepcopy(algorithms_1)
 
-    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=3)
+    _configure_for_checkpoint(tmp_path / "ckpt", n_checkpoints=3)
     bench_1 = benchmark(
         algorithms=algorithms_1,
         benchmark_problem=problem_1,
         iterations=10,
         n_trials=1,
-        checkpoint_manager=manager,
         max_processes=max_processes,
     )
+    _configure_for_checkpoint(tmp_path / "expected", n_checkpoints=3)
     if seed is not None:
         iop.set_seed(seed)
     bench_2 = benchmark(
@@ -458,8 +491,8 @@ def test_resume_from_checkpoint_with_additional_trials(
     assert bench_1 is not None
     assert bench_2 is not None
 
+    _configure_for_checkpoint(tmp_path / "ckpt", open_existing=True)
     resumed_bench = resume_benchmark(
-        checkpoint_manager=manager,
         increase_trials=1,
         max_processes=max_processes,
     )
@@ -541,15 +574,15 @@ def test_resume_from_checkpoint_with_additional_iterations(
     problem_5, algorithms_5 = _build_problem_and_algorithms(cost_cls=cost_cls)
     problem_10, algorithms_10 = deepcopy(problem_5), deepcopy(algorithms_5)
 
-    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=3)
+    _configure_for_checkpoint(tmp_path / "ckpt", n_checkpoints=3)
     bench_5 = benchmark(
         algorithms=algorithms_5,
         benchmark_problem=problem_5,
         iterations=5,
         n_trials=2,
-        checkpoint_manager=manager,
         max_processes=max_processes,
     )
+    _configure_for_checkpoint(tmp_path / "expected", n_checkpoints=3)
     if seed is not None:
         iop.set_seed(seed)
     bench_10 = benchmark(
@@ -562,8 +595,8 @@ def test_resume_from_checkpoint_with_additional_iterations(
     assert bench_5 is not None
     assert bench_10 is not None
 
+    _configure_for_checkpoint(tmp_path / "ckpt", open_existing=True)
     resumed_bench = resume_benchmark(
-        checkpoint_manager=manager,
         increase_iterations=5,
         max_processes=max_processes,
     )
@@ -658,15 +691,15 @@ def test_resume_from_checkpoint_with_additional_iterations_and_trials(
     problem_5, algorithms_5 = _build_problem_and_algorithms(cost_cls=cost_cls)
     problem_10, algorithms_10 = deepcopy(problem_5), deepcopy(algorithms_5)
 
-    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=3)
+    _configure_for_checkpoint(tmp_path / "ckpt", n_checkpoints=3)
     bench_5 = benchmark(
         algorithms=algorithms_5,
         benchmark_problem=problem_5,
         iterations=5,
         n_trials=1,
-        checkpoint_manager=manager,
         max_processes=max_processes,
     )
+    _configure_for_checkpoint(tmp_path / "expected", n_checkpoints=3)
     if seed is not None:
             iop.set_seed(seed)
     bench_10 = benchmark(
@@ -679,8 +712,8 @@ def test_resume_from_checkpoint_with_additional_iterations_and_trials(
     assert bench_5 is not None
     assert bench_10 is not None
 
+    _configure_for_checkpoint(tmp_path / "ckpt", open_existing=True)
     resumed_bench = resume_benchmark(
-        checkpoint_manager=manager,
         increase_iterations=5,
         increase_trials=1,
         max_processes=max_processes,
@@ -763,15 +796,15 @@ def test_resume_from_non_completed_checkpoint(
     problem_5, algorithms_5 = _build_problem_and_algorithms(cost_cls=cost_cls)
     problem_10, algorithms_10 = deepcopy(problem_5), deepcopy(algorithms_5)
 
-    manager = CheckpointManager(tmp_path / "ckpt", n_checkpoints=5)
+    _configure_for_checkpoint(tmp_path / "ckpt", n_checkpoints=5)
     bench_5 = benchmark(
         algorithms=algorithms_5,
         benchmark_problem=problem_5,
         iterations=5,
         n_trials=2,
-        checkpoint_manager=manager,
         max_processes=max_processes,
     )
+    _configure_for_checkpoint(tmp_path / "expected", n_checkpoints=5)
     if seed is not None:
         iop.set_seed(seed)
     bench_10 = benchmark(
@@ -827,8 +860,8 @@ def test_resume_from_non_completed_checkpoint(
                 progress = json.load(f)
             print(f"Progress for {path.parent.name}: {progress}")
 
+    _configure_for_checkpoint(tmp_path / "ckpt", open_existing=True)
     resumed_bench = resume_benchmark(
-        checkpoint_manager=manager,
         increase_iterations=5,
         max_processes=max_processes,
     )
@@ -900,6 +933,7 @@ def test_back_to_back_benchmarks(
     max_processes: int,
 ) -> None:
     _skip_if_max_processes_exceeds_cpu_count(max_processes)
+    configure(Frameworks.NUMPY, Devices.CPU)
 
     iop.set_seed(123)
     problem_5, algorithms_5 = _build_problem_and_algorithms(cost_cls=cost_cls)

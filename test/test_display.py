@@ -13,10 +13,12 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 from decent_array import Array
+from decent_array.types import Devices, Frameworks
 
 from decent_bench.agents import Agent, AgentHistory
 from decent_bench.algorithms.federated import FedAvg
-from decent_bench.benchmark import BenchmarkProblem, BenchmarkResult, compute_metrics, display_metrics
+from decent_bench.benchmark import BenchmarkProblem, BenchmarkResult, compute_metrics, configure, display_metrics
+from decent_bench.benchmark._configure import get_config
 from decent_bench.benchmark._metric_result import MetricResult
 from decent_bench.costs import LinearRegressionCost, LogisticRegressionCost, QuadraticCost
 from decent_bench.metrics._metric import Metric
@@ -35,6 +37,13 @@ from decent_bench.metrics.metric_library import Accuracy, MSE, Precision, Recall
 from decent_bench.networks import FedNetwork
 
 display_plots_module = importlib.import_module("decent_bench.benchmark._display.display_plots")
+
+
+def _ensure_configured() -> None:
+    try:
+        get_config()
+    except RuntimeError:
+        configure(Frameworks.NUMPY, Devices.CPU)
 
 
 # -----------------------------------------------------------------------------
@@ -131,6 +140,7 @@ def _run_display_with_capture(
     monkeypatch.setattr(display_metrics_module, "display_plots", _capture_plots)
 
     try:
+        _ensure_configured()
         display_metrics(metrics_result=metrics_result, **display_kwargs)
     finally:
         plt.close("all")
@@ -556,6 +566,7 @@ def test_compute_metrics_rejects_duplicate_metric_descriptions(
     plot_metrics: list[_MetricStub],
     expected_error: str,
 ) -> None:  # noqa: D103
+    _ensure_configured()
     benchmark_result = _build_minimal_benchmark_result()
 
     with pytest.raises(ValueError, match=expected_error):
@@ -563,9 +574,10 @@ def test_compute_metrics_rejects_duplicate_metric_descriptions(
 
 
 def test_compute_metrics_uses_federated_defaults_and_server_view() -> None:  # noqa: D103
+    _ensure_configured()
     benchmark_result, algorithm = _build_federated_benchmark_result(iterations=2)
 
-    metrics_result = compute_metrics(benchmark_result=benchmark_result, log_level=40)
+    metrics_result = compute_metrics(benchmark_result=benchmark_result)
 
     assert metrics_result.network_views is not None
     assert metrics_result.network_views[algorithm][0].server().x_history.max() == 2
@@ -606,6 +618,7 @@ def test_compute_metrics_uses_federated_defaults_and_server_view() -> None:  # n
 
 
 def test_compute_metrics_custom_metrics_do_not_append_federated_defaults(monkeypatch) -> None:  # noqa: D103
+    _ensure_configured()
     benchmark_result, _ = _build_federated_benchmark_result(iterations=1)
     metric = _MetricStub("custom table")
     captured: dict[str, object] = {}

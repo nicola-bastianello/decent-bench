@@ -5,6 +5,7 @@ import networkx as nx
 import pytest
 
 from decent_array import interoperability as iop
+from decent_array.types import Devices, Frameworks
 from decent_bench.agents import Agent
 from decent_bench.algorithms import Algorithm
 from decent_bench.algorithms.p2p import ADMM, ATC, DGD
@@ -12,6 +13,7 @@ from decent_bench.algorithms.federated import FedAvg, FedAdagrad, FedAdam, FedNo
 from decent_bench.benchmark import (
     BenchmarkProblem,
     benchmark,
+    configure,
     create_classification_problem,
 )
 from decent_bench.costs import LogisticRegressionCost, PyTorchCost
@@ -97,6 +99,7 @@ def _build_fed_problem_and_algorithms(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
 def test_p2p(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
+    configure(Frameworks.NUMPY, Devices.CPU)
     iop.set_seed(123)
     problem_5, algorithms_5 = _build_p2p_problem_and_algorithms(5, cost_cls=cost_cls)
 
@@ -126,6 +129,7 @@ def test_p2p(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
 def test_fed(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
+    configure(Frameworks.NUMPY, Devices.CPU)
     iop.set_seed(123)
     problem_5, algorithms_5 = _build_fed_problem_and_algorithms(5, cost_cls=cost_cls)
 
@@ -149,6 +153,7 @@ def test_fed(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
 
 
 def test_benchmark_rejects_duplicate_algorithm_names() -> None:
+    configure(Frameworks.NUMPY, Devices.CPU)
     iop.set_seed(123)
     problem, algorithms = _build_p2p_problem_and_algorithms(1, cost_cls=LogisticRegressionCost)
     algorithms[1].name = algorithms[0].name

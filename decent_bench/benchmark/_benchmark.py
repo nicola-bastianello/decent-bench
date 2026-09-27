@@ -1,4 +1,3 @@
-import logging
 import operator
 import random
 import warnings
@@ -50,7 +49,6 @@ def _validate_unique_algorithm_names(algorithms: list[Algorithm[Network]]) -> No
 
 
 def resume_benchmark(  # noqa: PLR0912, PLR0915
-    checkpoint_manager: "CheckpointManager",
     increase_iterations: int = 0,
     increase_trials: int = 0,
     create_backup: bool = True,
@@ -60,7 +58,6 @@ def resume_benchmark(  # noqa: PLR0912, PLR0915
     show_speed: bool = False,
     show_trial: bool = False,
     runtime_metrics: "list[RuntimeMetric] | None" = None,
-    log_level: int = logging.INFO,
 ) -> BenchmarkResult:
     """
     Resume a benchmark from an existing checkpoint directory.
@@ -118,6 +115,12 @@ def resume_benchmark(  # noqa: PLR0912, PLR0915
         ValueError: If the stored iteration count is not positive.
 
     """
+    from decent_bench.benchmark._configure import get_checkpoint_manager, get_config  # noqa: PLC0415
+
+    config_state = get_config()
+    checkpoint_manager = get_checkpoint_manager()
+    if checkpoint_manager is None:
+        raise ValueError("configure() must set storage_dir before resuming a benchmark")
     if not checkpoint_manager.checkpoint_dir.exists():
         raise ValueError(f"Checkpoint directory '{checkpoint_manager.checkpoint_dir}' does not exist for resume")
     if checkpoint_manager.is_empty():
@@ -143,7 +146,9 @@ def resume_benchmark(  # noqa: PLR0912, PLR0915
             if algorithms is None:
                 raise ValueError("Initial algorithms not found in checkpoint metadata")
 
-            log_listener, manager, mp_context = _init_logging_and_multiprocessing(log_level, max_processes, problem)
+            log_listener, manager, mp_context = _init_logging_and_multiprocessing(
+                config_state.log_level, max_processes, problem
+            )
 
             LOGGER.debug(f"Loaded checkpoint: algorithms={algorithms}")
         except (FileNotFoundError, KeyError) as e:
@@ -226,9 +231,7 @@ def benchmark(
     progress_step: int | None = 100,
     show_speed: bool = False,
     show_trial: bool = False,
-    checkpoint_manager: "CheckpointManager | None" = None,
     runtime_metrics: "list[RuntimeMetric] | None" = None,
-    log_level: int = logging.INFO,
 ) -> BenchmarkResult:
     """
     Benchmark decentralized algorithms.
@@ -279,10 +282,16 @@ def benchmark(
         ValueError: If ``iterations`` is not positive.
 
     """
+    from decent_bench.benchmark._configure import get_checkpoint_manager, get_config  # noqa: PLC0415
+
+    config_state = get_config()
+    checkpoint_manager = get_checkpoint_manager()
     if iterations <= 0:
         raise ValueError("`iterations` must be positive")
     _validate_unique_algorithm_names(algorithms)
-    log_listener, manager, mp_context = _init_logging_and_multiprocessing(log_level, max_processes, benchmark_problem)
+    log_listener, manager, mp_context = _init_logging_and_multiprocessing(
+        config_state.log_level, max_processes, benchmark_problem
+    )
 
     if checkpoint_manager is not None:
         if not checkpoint_manager.is_empty():
