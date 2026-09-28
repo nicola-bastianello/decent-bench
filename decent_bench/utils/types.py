@@ -71,7 +71,7 @@ global dataset or the entire dataset itself. These subsets can be obtained
 by using the :class:`~decent_bench.datasets.DatasetHandler` class, specifically the
 :meth:`~decent_bench.datasets.DatasetHandler.split` method.
 
-Features and targets are represented as :class:`~decent_bench.utils.array.Array`
+Features and targets are represented as :class:`decent_array.Array`
 objects or framework-specific tensor objects in special cases. For unsupervised learning,
 targets are usually None.
 

@@ -432,9 +432,9 @@ class P2PNetwork(Network):
         Set custom consensus weights matrix.
 
         A simple way to create custom weights is to start using numpy and then
-        use :func:`~decent_bench.utils.interoperability.to_array` to convert to an
-        :class:`~decent_bench.utils.array.Array` object with the desired framework and device.
-        For an example see :func:`~decent_bench.utils.interoperability.zeros`.
+        use :func:`decent_array.interoperability.to_array` to convert to a
+        :class:`decent_array.Array` with the desired framework and device.
+        For an example see :func:`decent_array.interoperability.zeros`.
 
         Raises:
             ValueError: if the shape, framework, and device are incompatible with the agents' cost functions

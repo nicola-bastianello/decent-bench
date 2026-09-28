@@ -89,7 +89,6 @@ of challenging scenarios. In particular, decent-bench offers the following funct
 * **Reproducibility**: as part of the benchmarking pipeline, decent-bench allows setting random seeds to ensure that results are easily reproducible.
 * **Paper-ready results**: decent-bench provides the results of a benchmark run in a format that can be directly included in papers (with several customization options). The raw results are also available as ``pandas.DataFrame`` for easy inspection.
 
-
 References
 ----------
 

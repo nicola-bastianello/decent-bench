@@ -14,7 +14,7 @@ from decent_array.types import Devices, Frameworks
 from decent_bench.utils import _logger
 
 if TYPE_CHECKING:
-    from decent_bench.utils.checkpoint_manager import CheckpointManager
+    from decent_bench.utils._checkpoint_manager import CheckpointManager
 
 
 @dataclass(frozen=True)
@@ -119,7 +119,7 @@ def configure(
 
     # checkpoint manager
     if storage_path is not None:
-        from decent_bench.utils.checkpoint_manager import CheckpointManager  # noqa: PLC0415
+        from decent_bench.utils._checkpoint_manager import CheckpointManager  # noqa: PLC0415
 
         _STATE.checkpoint_manager = CheckpointManager(
             storage_path,

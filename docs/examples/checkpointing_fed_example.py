@@ -1,14 +1,15 @@
+from decent_array.types import Devices, Frameworks
+
 from decent_bench import benchmark
 from decent_bench.agents import Agent
 from decent_bench.algorithms.federated import FedAvg, Scaffold
-from decent_bench.benchmark import create_regression_problem
+from decent_bench.benchmark import configure, create_regression_problem
 from decent_bench.metrics import metric_library
 from decent_bench.networks import FedNetwork
-from decent_bench.utils.checkpoint_manager import CheckpointManager
 
 if __name__ == "__main__":
 
-    cm = CheckpointManager("./results")
+    configure(Frameworks.NUMPY, Devices.CPU, storage_dir="./results")
 
     ## Problem definition ------------------------------------------------
     n_agents = 10
@@ -30,7 +31,6 @@ if __name__ == "__main__":
         benchmark_problem=problem,
         iterations=num_iter,
         n_trials=1,
-        checkpoint_manager=cm,
         )
 
     ## Computing & displaying results ------------------------------------
@@ -40,7 +40,6 @@ if __name__ == "__main__":
         benchmark_result=results,
         table_metrics=metrics_to_compute,
         plot_metrics=metrics_to_compute,
-        checkpoint_manager=cm,
         )
 
-    benchmark.display_metrics(metrics_results, checkpoint_manager=cm)
+    benchmark.display_metrics(metrics_results)

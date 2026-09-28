@@ -1,12 +1,15 @@
+from decent_array.types import Devices, Frameworks
+
 from decent_bench import benchmark
 from decent_bench.agents import Agent
 from decent_bench.algorithms.federated import FedAvg, Scaffold
-from decent_bench.benchmark import create_regression_problem
+from decent_bench.benchmark import configure, create_regression_problem
 from decent_bench.metrics import metric_library
 from decent_bench.networks import FedNetwork
 from decent_bench.schemes import FairSelection
 
 if __name__ == "__main__":
+    configure(Frameworks.NUMPY, Devices.CPU)
 
     ## Problem definition ------------------------------------------------
     n_agents = 10

@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     from decent_bench.benchmark._progress_bar import ProgressBarHandle
     from decent_bench.metrics import RuntimeMetric
-    from decent_bench.utils.checkpoint_manager import CheckpointManager
+    from decent_bench.utils._checkpoint_manager import CheckpointManager
 
 
 def _validate_unique_algorithm_names(algorithms: list[Algorithm[Network]]) -> None:

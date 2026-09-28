@@ -58,7 +58,7 @@ class Cost(ABC):
         """
         The framework used by this cost function.
 
-        Make sure that all :class:`decent_bench.utils.array.Array` objects returned by this cost function's methods
+        Make sure that all :class:`decent_array.Array` objects returned by this cost function's methods
         use this framework.
 
         """
@@ -69,7 +69,7 @@ class Cost(ABC):
         """
         The device used by this cost function.
 
-        Make sure that all :class:`decent_bench.utils.array.Array` objects returned by this cost function's methods
+        Make sure that all :class:`decent_array.Array` objects returned by this cost function's methods
         use this device.
 
         """

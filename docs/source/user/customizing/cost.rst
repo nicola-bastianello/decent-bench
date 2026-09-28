@@ -70,13 +70,9 @@ The following shows the implementation of :class:`~decent_bench.costs.QuadraticC
     :lines: 15-142
 
 
-.. _interop_cost:
-
-.. note:: What is :func:`~decent_bench.utils.interoperability.autodecorate_cost_method`? As briefly discussed
-    :ref:`here <interop_seed>` (and explored in more detail in the page :doc:`on customizing algorithms </user/customizing/algorithm>`),
-    decent-bench uses an interoperability layer that allows to define algorithms only once, but implementing
-    cost functions in different backends (supported are NumPy, PyTorch, TensorFlow, JAX). This allows to use efficient,
-    framework-native operations to implement costs. The decorator then is needed to correctly interface costs with the
-    interoperability layer. In particular, the decorator 1) converts inputs of type
-    :class:`~decent_bench.utils.array.Array` to framework-native arrays/tensors, and 2) converts
-    the output from framework-native arrays/tensors to :class:`~decent_bench.utils.array.Array`.
+Cost implementations may use framework-native operations while the public cost methods accept and return
+``decent_array.Array`` values. Apply ``autodecorate_cost_method`` to a native implementation of ``function``,
+``gradient``, ``hessian``, or ``proximal`` to adapt its inputs and outputs to the public cost method contract. For
+example, :class:`~decent_bench.costs.QuadraticCost` uses this decorator to implement its operations with NumPy. The
+decorator is an internal helper in ``decent_bench.costs._decorators``; the built-in cost implementations show its use.
+See the `decent-array documentation <https://decent-array.readthedocs.io/en/latest/>`_ for its array API.

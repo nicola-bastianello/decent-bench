@@ -71,7 +71,7 @@ class CheckpointManager:
         - **metadata.json**: Benchmark configuration and any user-provided metadata
             (e.g., hyperparameters, system info). User-provided metadata can be added through the
             :func:`~decent_bench.benchmark.benchmark` function or appended later using
-            :func:`~decent_bench.utils.checkpoint_manager.CheckpointManager.append_metadata`.
+            :meth:`~decent_bench.utils._checkpoint_manager.CheckpointManager.append_metadata`.
         - **benchmark_problem.pkl.zst**: Initial benchmark problem state before any trials run,
             stored as a zstd-compressed pickle payload.
         - **initial_algorithms.pkl.zst**: Initial algorithm states before any trials run,

@@ -33,7 +33,7 @@ from decent_bench.costs import LogisticRegressionCost, PyTorchCost
 from decent_bench.metrics._metrics_view import NetworkMetricsView
 from decent_bench.networks import Network, P2PNetwork
 from decent_bench.schemes import GaussianNoise, Quantization, UniformActivationRate, UniformDropRate
-from decent_bench.utils.checkpoint_manager import _ZSTD_MAGIC, CheckpointManager  # noqa: PLC2701
+from decent_bench.utils._checkpoint_manager import _ZSTD_MAGIC, CheckpointManager  # noqa: PLC2701
 
 
 def _configure_for_checkpoint(
