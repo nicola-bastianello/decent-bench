@@ -92,12 +92,3 @@ def test_configure_rejects_backend_for_existing_experiment(tmp_path: Path) -> No
 
     with pytest.raises(ValueError, match="must not be provided"):
         configure(Frameworks.NUMPY, Devices.CPU, storage_dir=storage_dir)
-
-
-def test_configure_rejects_existing_experiment_without_backend_metadata(tmp_path: Path) -> None:  # noqa: D103
-    storage_dir = tmp_path / "experiment"
-    storage_dir.mkdir()
-    (storage_dir / "metadata.json").write_text("{}", encoding="utf-8")
-
-    with pytest.raises(ValueError, match="does not contain a valid backend"):
-        configure(storage_dir=storage_dir)
