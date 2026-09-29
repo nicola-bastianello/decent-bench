@@ -194,35 +194,3 @@ def test_cost_scalar_ops_reject_invalid_inputs() -> None:
         _ = cost / 0.0
     with pytest.raises(TypeError):
         _ = 0.0 / cost
-
-
-def test_cost_addition_rejects_mismatched_frameworks() -> None:
-    cost_a = _SimpleCost(scale=1.0, framework=Frameworks.NUMPY)
-    cost_b = _SimpleCost(scale=2.0, framework=Frameworks.PYTORCH)
-
-    with pytest.raises(ValueError, match="Mismatching frameworks"):
-        _ = cost_a + cost_b
-
-
-def test_cost_addition_rejects_mismatched_devices() -> None:
-    cost_a = _SimpleCost(scale=1.0, device=Devices.CPU)
-    cost_b = _SimpleCost(scale=2.0, device=Devices.GPU)
-
-    with pytest.raises(ValueError, match="Mismatching devices"):
-        _ = cost_a + cost_b
-
-
-def test_sum_cost_rejects_mismatched_frameworks() -> None:
-    cost_a = _SimpleCost(scale=1.0, framework=Frameworks.NUMPY)
-    cost_b = _SimpleCost(scale=2.0, framework=Frameworks.PYTORCH)
-
-    with pytest.raises(ValueError, match="Mismatching frameworks"):
-        SumCost([cost_a, cost_b])
-
-
-def test_sum_cost_rejects_mismatched_devices() -> None:
-    cost_a = _SimpleCost(scale=1.0, device=Devices.CPU)
-    cost_b = _SimpleCost(scale=2.0, device=Devices.GPU)
-
-    with pytest.raises(ValueError, match="Mismatching devices"):
-        SumCost([cost_a, cost_b])

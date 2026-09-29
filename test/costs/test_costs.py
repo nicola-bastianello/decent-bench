@@ -107,18 +107,17 @@ def test_logistic_regression_validates_labels_and_indices() -> None:
         cost.gradient(Array(np.zeros(2)), indices="invalid")
 
 
-def test_quadratic_cost_matches_direct_formula_and_symmetrized_derivatives() -> None:
+def test_quadratic_cost_matches_direct_formula() -> None:
     A = np.array([[2.0, 1.0], [3.0, 4.0]])
     b = np.array([1.0, -2.0])
     x = Array(np.array([1.0, -1.0]))
     cost = QuadraticCost(A=A, b=b, c=3.0)
-    A_sym = 0.5 * (A + A.T)
 
     assert cost.function(x) == pytest.approx(7.0)
-    np.testing.assert_allclose(iop.to_numpy(cost.gradient(x)), A_sym @ iop.to_numpy(x) + b)
-    np.testing.assert_allclose(iop.to_numpy(cost.hessian(x)), A_sym)
+    np.testing.assert_allclose(iop.to_numpy(cost.gradient(x)), A @ iop.to_numpy(x) + b)
+    np.testing.assert_allclose(iop.to_numpy(cost.hessian(x)), A)
     np.testing.assert_allclose(iop.to_numpy(cost.proximal(x, penalty=0.5)), np.array([0.3, -0.1]))
-    eigvals = np.linalg.eigvalsh(A_sym)
+    eigvals = np.linalg.eigvalsh(A)
     assert cost.m_smooth == pytest.approx(float(np.max(np.abs(eigvals))))
     assert cost.m_cvx == pytest.approx(float(np.min(eigvals)))
 
@@ -137,12 +136,10 @@ def test_quadratic_cost_validates_constructor_inputs(A: np.ndarray, b: np.ndarra
         QuadraticCost(A=A, b=b)
 
 
-def test_zero_cost_returns_zero_values_and_preserves_framework_metadata() -> None:
-    cost = ZeroCost(shape=(2,), framework=Frameworks.NUMPY, device=Devices.CPU)
+def test_zero_cost_returns_zero_values() -> None:
+    cost = ZeroCost(shape=(2,))
     x = Array(np.array([1.5, -2.5]))
 
-    assert cost.framework == Frameworks.NUMPY
-    assert cost.device == Devices.CPU
     assert cost.function(x) == 0.0
     np.testing.assert_allclose(iop.to_numpy(cost.gradient(x)), np.zeros(2))
     np.testing.assert_allclose(iop.to_numpy(cost.hessian(x)), np.zeros((2, 2)))

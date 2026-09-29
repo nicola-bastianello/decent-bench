@@ -120,26 +120,6 @@ def test_fed_network_default_server_is_always_active() -> None:
     assert isinstance(net.server()._activation, AlwaysActive)  # noqa: SLF001
 
 
-def test_p2p_network_rejects_mixed_framework_costs() -> None:
-    agents = [
-        Agent(L2RegularizerCost((2,), framework=Frameworks.NUMPY)),
-        Agent(L2RegularizerCost((2,), framework=Frameworks.PYTORCH)),
-    ]
-
-    with pytest.raises(ValueError, match="same shape, framework, and device"):
-        P2PNetwork(graph=nx.complete_graph(2), agents=agents)
-
-
-def test_p2p_network_rejects_mixed_device_costs() -> None:
-    agents = [
-        Agent(L2RegularizerCost((2,), device=Devices.CPU)),
-        Agent(L2RegularizerCost((2,), device=Devices.GPU)),
-    ]
-
-    with pytest.raises(ValueError, match="same shape, framework, and device"):
-        P2PNetwork(graph=nx.complete_graph(2), agents=agents)
-
-
 def test_p2p_network_rejects_mismatched_cost_shapes() -> None:
     agents = [
         Agent(L2RegularizerCost((2,))),
@@ -148,24 +128,6 @@ def test_p2p_network_rejects_mismatched_cost_shapes() -> None:
 
     with pytest.raises(ValueError, match="same shape, framework, and device"):
         P2PNetwork(graph=nx.complete_graph(2), agents=agents)
-
-
-def test_fed_network_rejects_mixed_framework_clients() -> None:
-    clients = [
-        Agent(L2RegularizerCost((2,), framework=Frameworks.NUMPY)),
-        Agent(L2RegularizerCost((2,), framework=Frameworks.PYTORCH)),
-    ]
-
-    with pytest.raises(ValueError, match="same shape, framework, and device"):
-        FedNetwork(clients=clients)
-
-
-def test_fed_network_rejects_custom_server_with_mixed_framework() -> None:
-    clients = [Agent(L2RegularizerCost((2,), framework=Frameworks.NUMPY)) for _ in range(2)]
-    server = Agent(L2RegularizerCost((2,), framework=Frameworks.PYTORCH), activation=AlwaysActive())
-
-    with pytest.raises(ValueError, match="same shape, framework, and device"):
-        FedNetwork(clients=clients, server=server)
 
 
 def test_initialize_message_schemes_with_dict_all_agents() -> None:

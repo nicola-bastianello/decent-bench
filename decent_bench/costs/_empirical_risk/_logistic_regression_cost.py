@@ -187,8 +187,8 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         A, b = self._get_batch_data(indices)  # noqa: N806
         Ax = iop.dot(A, x)  # noqa: N806
         neg_log_sig = iop.logaddexp(0.0, -Ax)
-        cost = b @ neg_log_sig + (1.0 - b) @ (Ax + neg_log_sig)
-        return float(cost) / len(self.batch_used)
+        cost = iop.sum(b * neg_log_sig + (1.0 - b) * (Ax + neg_log_sig))
+        return float(cost.item()) / len(self.batch_used)
 
     def gradient(
         self,

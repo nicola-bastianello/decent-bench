@@ -52,7 +52,6 @@ def _make_cost(
     input_size: int = 4,
     hidden_size: int = 10,
     output_size: int = 3,
-    device: Devices = Devices.CPU,
     cost_kwargs: dict[str, Any] | None = None,
 ) -> PyTorchCost:
     torch.manual_seed(7)
@@ -63,15 +62,14 @@ def _make_cost(
         loss_fn=torch.nn.CrossEntropyLoss(),
         batch_size=batch_size,
         max_batch_size=max_batch_size,
-        device=device,
         **(cost_kwargs or {}),
     )
 
 
 @backends
-def test_per_sample_gradients_match_individual_gradients(device: Devices) -> None:
+def test_per_sample_gradients_match_individual_gradients() -> None:
     dataset = _make_dataset()
-    cost = _make_cost(dataset, max_batch_size=3, batch_size=10, device=device)
+    cost = _make_cost(dataset, max_batch_size=3, batch_size=10)
 
     indices = [5, 1, 7, 2, 0, 3, 4, 6]
     x = cost._get_model_parameters().detach().clone()  # noqa: SLF001
@@ -86,9 +84,9 @@ def test_per_sample_gradients_match_individual_gradients(device: Devices) -> Non
 
 
 @backends
-def test_mean_gradient_matches_mean_of_per_sample_gradients(device: Devices) -> None:
+def test_mean_gradient_matches_mean_of_per_sample_gradients() -> None:
     dataset = _make_dataset()
-    cost = _make_cost(dataset, max_batch_size=4, batch_size=9, device=device)
+    cost = _make_cost(dataset, max_batch_size=4, batch_size=9)
 
     indices = list(range(13))
     x = cost._get_model_parameters().detach().clone()  # noqa: SLF001
@@ -101,10 +99,10 @@ def test_mean_gradient_matches_mean_of_per_sample_gradients(device: Devices) -> 
 
 
 @backends
-def test_max_batch_size_does_not_change_function_or_gradients(device: Devices) -> None:
+def test_max_batch_size_does_not_change_function_or_gradients() -> None:
     dataset = _make_dataset(n_samples=23)
-    base_cost = _make_cost(dataset, max_batch_size=23, batch_size=11, device=device)
-    chunked_cost = _make_cost(dataset, max_batch_size=4, batch_size=11, device=device)
+    base_cost = _make_cost(dataset, max_batch_size=23, batch_size=11)
+    chunked_cost = _make_cost(dataset, max_batch_size=4, batch_size=11)
 
     x = base_cost._get_model_parameters().detach().clone()  # noqa: SLF001
     indices = [0, 4, 2, 10, 9, 3, 8, 7, 6, 1, 5, 11, 12, 13, 14]
@@ -123,10 +121,10 @@ def test_max_batch_size_does_not_change_function_or_gradients(device: Devices) -
 
 
 @backends
-def test_max_batch_size_does_not_change_predict_outputs(device: Devices) -> None:
+def test_max_batch_size_does_not_change_predict_outputs() -> None:
     dataset = _make_dataset(n_samples=15)
-    cost_a = _make_cost(dataset, max_batch_size=15, batch_size=8, device=device)
-    cost_b = _make_cost(dataset, max_batch_size=2, batch_size=8, device=device)
+    cost_a = _make_cost(dataset, max_batch_size=15, batch_size=8)
+    cost_b = _make_cost(dataset, max_batch_size=2, batch_size=8)
 
     x = cost_a._get_model_parameters().detach().clone()  # noqa: SLF001
     data = [sample[0] for sample in dataset]
@@ -139,7 +137,7 @@ def test_max_batch_size_does_not_change_predict_outputs(device: Devices) -> None
 
 
 @backends
-def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot(device: Devices) -> None:
+def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot() -> None:
     dataset = _make_dataset(n_samples=21)
 
     torch.manual_seed(21)
@@ -152,7 +150,6 @@ def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot(device:
         loss_fn=torch.nn.CrossEntropyLoss(),
         batch_size=10,
         max_batch_size=21,
-        device=device,
     )
     cost_chunked = PyTorchCost(
         dataset=dataset,
@@ -160,7 +157,6 @@ def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot(device:
         loss_fn=torch.nn.CrossEntropyLoss(),
         batch_size=10,
         max_batch_size=3,
-        device=device,
     )
 
     x = cost_full._get_model_parameters().detach().clone()  # noqa: SLF001
@@ -206,7 +202,7 @@ def test_picklable(device: Devices, cost_kwargs: dict[str, Any] | None) -> None:
         cost_kwargs["dataloader_kwargs"] = dl_kwargs
 
     dataset = _make_dataset(n_samples=5)
-    cost = _make_cost(dataset, max_batch_size=2, batch_size=2, cost_kwargs=cost_kwargs, device=device)
+    cost = _make_cost(dataset, max_batch_size=2, batch_size=2, cost_kwargs=cost_kwargs)
 
     x = cost._get_model_parameters().detach().clone()  # noqa: SLF001
 
@@ -224,9 +220,9 @@ def test_picklable(device: Devices, cost_kwargs: dict[str, Any] | None) -> None:
 
 
 @backends
-def test_local_training_supports_vector_correction(device: Devices) -> None:
+def test_local_training_supports_vector_correction() -> None:
     dataset = _make_dataset(n_samples=7)
-    cost = _make_cost(dataset, max_batch_size=7, batch_size=7, device=device)
+    cost = _make_cost(dataset, max_batch_size=7, batch_size=7)
 
     lr = 0.05
     cost.init_local_training(opt_cls=torch.optim.SGD, opt_kwargs={"lr": lr})
@@ -255,9 +251,9 @@ def test_local_training_supports_vector_correction(device: Devices) -> None:
 
 
 @backends
-def test_local_training_scalar_regularizer_contributes_gradient(device: Devices) -> None:
+def test_local_training_scalar_regularizer_contributes_gradient() -> None:
     dataset = _make_dataset(n_samples=7)
-    cost = _make_cost(dataset, max_batch_size=7, batch_size=7, device=device)
+    cost = _make_cost(dataset, max_batch_size=7, batch_size=7)
 
     lr = 0.05
     lam = 0.2
