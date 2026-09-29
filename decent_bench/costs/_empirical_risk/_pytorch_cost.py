@@ -77,6 +77,7 @@ class PyTorchCost(EmpiricalRiskCost):
         "total_params",
         "param_names",
         "_dataloader_iter",
+        "_pytorch_device",
     )
 
     def __init__(
@@ -88,7 +89,6 @@ class PyTorchCost(EmpiricalRiskCost):
         *,
         batch_size: EmpiricalRiskBatchSize = "all",
         max_batch_size: int | None = None,
-        device: Devices = Devices.CPU,
         use_dataloader: bool = False,
         dataloader_kwargs: dict[str, Any] | None = None,
         load_dataset: bool = True,
@@ -116,8 +116,6 @@ class PyTorchCost(EmpiricalRiskCost):
                 when `indices` is set to "all" but the dataset is too large to fit in memory at once. If not specified,
                 it will default to the batch_size (if batch_size is an int) or the total number of samples
                 (if batch_size is "all").
-            device (Devices): Device to run computations on. Make sure to test CPU vs GPU performance for your
-                specific model and dataset, as it can vary.
             use_dataloader (bool): Whether to use DataLoader for batching.
                 Can be beneficial for large datasets which can't fit into memory or when using an accelerator.
                 Dataloaders cannot be pickled so resumption of iterrupted runs will start with a new random batch order.
@@ -141,6 +139,15 @@ class PyTorchCost(EmpiricalRiskCost):
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch is not available. Please install PyTorch to use PyTorchCost.")
 
+        # check framework
+        from decent_bench.benchmark._configure import get_config  # noqa: PLC0415
+
+        config = get_config()
+        if config.framework is not Frameworks.PYTORCH:
+            raise RuntimeError(
+                f"PyTorchCost requires the PyTorch backend, but '{config.framework.value}' is configured."
+            )
+
         if isinstance(batch_size, int) and (batch_size <= 0 or batch_size > len(dataset)):
             raise ValueError(
                 f"Batch size must be positive and at most the number of samples, "
@@ -160,7 +167,6 @@ class PyTorchCost(EmpiricalRiskCost):
         self.final_activation = final_activation if final_activation is not None else torch.nn.Identity()
         self._batch_size = self.n_samples if batch_size == "all" else batch_size
         self._max_batch_size = max_batch_size if max_batch_size is not None else self.n_samples
-        self._device = device
         self._use_dataloader = use_dataloader
         self._dataloader_kwargs = dataloader_kwargs if dataloader_kwargs is not None else {}
         self._load_dataset = load_dataset
@@ -170,9 +176,10 @@ class PyTorchCost(EmpiricalRiskCost):
         self._scheduler: torch.optim.lr_scheduler.LRScheduler | None = None
 
         try:
-            self._pytorch_device = _PYTORCH_DEVICES[device]
+            self._pytorch_device = _PYTORCH_DEVICES[config.device]
         except KeyError as error:
-            raise ValueError(f"Unsupported PyTorch device: {device}") from error
+            raise ValueError(f"Unsupported PyTorch device: {config.device}") from error
+
         self.model = self.model.to(self._pytorch_device)
         self.loss_fn = self.loss_fn.to(self._pytorch_device)
 
@@ -203,23 +210,27 @@ class PyTorchCost(EmpiricalRiskCost):
         """Restore state and clear transient runtime caches."""
         for key, value in state.items():
             setattr(self, key, value)
+
+        from decent_bench.benchmark._configure import get_config  # noqa: PLC0415
+
+        config = get_config()
+        if config.framework is not Frameworks.PYTORCH:
+            raise RuntimeError(
+                f"PyTorchCost requires the PyTorch backend, but '{config.framework.value}' is configured."
+            )
+
+        self._pytorch_device = _PYTORCH_DEVICES[config.device]
         self.model = self.model.to(self._pytorch_device)
         self.loss_fn = self.loss_fn.to(self._pytorch_device)
+
         if self._dataloader is not None:
             self._dataloader_iter = iter(self._dataloader)
+
         self._init_param_caches()
 
     @property
     def shape(self) -> tuple[int, ...]:
         return (self.total_params,)
-
-    @property
-    def framework(self) -> Frameworks:
-        return Frameworks.PYTORCH
-
-    @property
-    def device(self) -> Devices:
-        return self._device
 
     @property
     def n_samples(self) -> int:

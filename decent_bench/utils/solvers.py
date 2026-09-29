@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from math import isfinite
 from typing import TYPE_CHECKING, final
 
 import numpy as np
@@ -57,22 +58,21 @@ def solve(
     from decent_bench.costs import LinearRegressionCost, QuadraticCost, SumCost  # noqa: PLC0415
 
     if isinstance(cost, QuadraticCost):
-        x_optimal = Array(np.linalg.solve(cost.A, -cost.b))
+        x_optimal = iop.solve(cost.A, -cost.b)
     # linear regression
     elif isinstance(cost, SumCost) and all(isinstance(c, LinearRegressionCost) for c in cost.costs):
         z = iop.zeros(shape=cost.costs[0].shape)
-        Q = sum(c.hessian(z, indices="all") for c in cost.costs).value  # type: ignore[union-attr] # noqa: N806
-        r = sum(c.gradient(z, indices="all") for c in cost.costs).value  # type: ignore[union-attr]
+        Q = sum(c.hessian(z, indices="all") for c in cost.costs) # noqa: N806
+        r = sum(c.gradient(z, indices="all") for c in cost.costs)
         try:
-            x_optimal_np = np.linalg.solve(Q, -r)
+            x_optimal = iop.solve(Q, -r)  # type: ignore[arg-type]
         except np.linalg.LinAlgError:
-            x_optimal_np = np.linalg.lstsq(Q, -r, rcond=None)[0]
-        x_optimal = Array(x_optimal_np)
+            x_optimal = Array(np.linalg.lstsq(iop.to_numpy(Q), iop.to_numpy(-r), rcond=None)[0])
     # exclude costs with m_smooth = 0
-    elif np.isfinite(cost.m_smooth) and np.isfinite(cost.m_cvx) and cost.m_smooth == 0:
+    elif isfinite(cost.m_smooth) and isfinite(cost.m_cvx) and cost.m_smooth == 0:
         raise ValueError("Costs with m_smooth = 0 are not supported.")
     # smooth and convex/strongly convex
-    elif np.isfinite(cost.m_smooth) and np.isfinite(cost.m_cvx) and cost.m_smooth > 0:
+    elif isfinite(cost.m_smooth) and isfinite(cost.m_cvx) and cost.m_smooth > 0:
         LOGGER.info(f"{stop_criteria}")
         x_optimal = AcceleratedGradientDescent(cost).run(
             max_iter=max_iter,

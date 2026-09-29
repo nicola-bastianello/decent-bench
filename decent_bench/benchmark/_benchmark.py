@@ -424,7 +424,7 @@ def _init_logging_and_multiprocessing(
         _logger.start_logger(log_level)
         return None, None, None
 
-    use_spawn = _should_use_spawn_context(benchmark_problem)
+    use_spawn = _should_use_spawn_context()
     mp_context = get_context("spawn") if use_spawn else None
     try:
         manager = Manager() if mp_context is None else mp_context.Manager()
@@ -673,16 +673,16 @@ def _get_runtime_metrics(
     return trial_runtime_metrics
 
 
-def _should_use_spawn_context(benchmark_problem: BenchmarkProblem) -> bool:
+def _should_use_spawn_context() -> bool:
     """Check if any cost function uses a framework that should run with spawn context."""
     unsafe_frameworks = {
         Frameworks.PYTORCH,
         Frameworks.TENSORFLOW,
         Frameworks.JAX,
     }
-    uses_unsafe_framework = any(
-        agent.cost.framework in unsafe_frameworks for agent in benchmark_problem.network.agents()
-    )
+    from decent_bench.benchmark._configure import get_config  # noqa: PLC0415
+    config = get_config()
+    uses_unsafe_framework = config.framework in unsafe_frameworks
     if uses_unsafe_framework:
         LOGGER.warning(
             "It is not recommended to use multiprocessing with PyTorch/TensorFlow/JAX, "

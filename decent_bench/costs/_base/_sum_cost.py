@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from functools import cached_property
+from math import isnan
 from typing import Any
 
-import numpy as np
 from decent_array import Array
 from decent_array import interoperability as iop
-from decent_array.types import Devices, Frameworks
 
 from decent_bench.costs._base._cost import Cost
 from decent_bench.utils import solvers as ca
@@ -43,14 +42,6 @@ class SumCost(Cost):
     def shape(self) -> tuple[int, ...]:
         return self.costs[0].shape
 
-    @property
-    def framework(self) -> Frameworks:
-        return self.costs[0].framework
-
-    @property
-    def device(self) -> Devices:
-        return self.costs[0].device
-
     @cached_property
     def m_smooth(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
         r"""
@@ -66,7 +57,7 @@ class SumCost(Cost):
         :attr:`Cost.m_smooth <decent_bench.costs.Cost.m_smooth>`.
         """
         m_smooth_vals = [cf.m_smooth for cf in self.costs]
-        return np.nan if any(np.isnan(v) for v in m_smooth_vals) else sum(m_smooth_vals)
+        return float("nan") if any(isnan(v) for v in m_smooth_vals) else sum(m_smooth_vals)
 
     @cached_property
     def m_cvx(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
@@ -83,7 +74,7 @@ class SumCost(Cost):
         :attr:`Cost.m_cvx <decent_bench.costs.Cost.m_cvx>`.
         """
         m_cvx_vals = [cf.m_cvx for cf in self.costs]
-        return np.nan if any(np.isnan(v) for v in m_cvx_vals) else sum(m_cvx_vals)
+        return float("nan") if any(isnan(v) for v in m_cvx_vals) else sum(m_cvx_vals)
 
     def function(self, x: Array, *args: Any, **kwargs: Any) -> float:  # noqa: ANN401
         """Sum the :meth:`Cost.function <decent_bench.costs.Cost.function>` of each cost function."""

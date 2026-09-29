@@ -26,7 +26,6 @@ SOLVE_MAX_TOL = 1e-16
 def create_classification_problem(
     cost_cls: type[LogisticRegressionCost | PyTorchCost] = LogisticRegressionCost,
     *,
-    device: Devices = Devices.CPU,
     n_agents: int = 100,
     batch_size: EmpiricalRiskBatchSize = "all",
     compute_x_optimal: bool = True,
@@ -37,7 +36,6 @@ def create_classification_problem(
 
     Args:
         cost_cls: type of cost function
-        device: device to create the problem on (only relevant for PyTorchCost)
         n_agents: number of agents
         batch_size: size of mini-batches for stochastic methods, or "all" for full-batch
         compute_x_optimal: if the optimal solution should be computed
@@ -62,7 +60,6 @@ def create_classification_problem(
         n_samples=n_agents * 10,
         n_features=3,
         framework=Frameworks.PYTORCH if cost_cls is PyTorchCost else Frameworks.NUMPY,
-        device=device,
         feature_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
         squeeze_targets=cost_cls is PyTorchCost,  # PyTorchCost expects squeezed targets for CrossEntropyLoss
     )
@@ -71,7 +68,6 @@ def create_classification_problem(
         n_samples=100,
         n_features=3,
         framework=Frameworks.PYTORCH if cost_cls is PyTorchCost else Frameworks.NUMPY,
-        device=device,
         feature_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
         squeeze_targets=cost_cls is PyTorchCost,
     )
@@ -102,7 +98,6 @@ def create_classification_problem(
                 loss_fn=torch.nn.CrossEntropyLoss(),
                 final_activation=ArgmaxActivation(),
                 batch_size=batch_size,
-                device=device,
             )
             for p in local_datasets
         ]
@@ -133,7 +128,6 @@ def create_classification_problem(
 def create_regression_problem(
     cost_cls: type[LinearRegressionCost | PyTorchCost] = LinearRegressionCost,
     *,
-    device: Devices = Devices.CPU,
     n_agents: int = 100,
     batch_size: EmpiricalRiskBatchSize = "all",
     compute_x_optimal: bool = True,
@@ -143,7 +137,6 @@ def create_regression_problem(
 
     Args:
         cost_cls: type of cost function
-        device: device to create the problem on (only relevant for PyTorchCost)
         n_agents: number of agents
         batch_size: size of mini-batches for stochastic methods, or "all" for full-batch
         compute_x_optimal: if the optimal solution should be computed
@@ -167,7 +160,6 @@ def create_regression_problem(
         n_samples=n_agents * 10,
         n_features=1,
         framework=Frameworks.PYTORCH if cost_cls is PyTorchCost else Frameworks.NUMPY,
-        device=device,
         feature_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
         target_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
     )
@@ -176,7 +168,6 @@ def create_regression_problem(
         n_samples=100,
         n_features=1,
         framework=Frameworks.PYTORCH if cost_cls is PyTorchCost else Frameworks.NUMPY,
-        device=device,
         feature_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
         target_dtype=np.float32 if cost_cls is PyTorchCost else np.float64,
     )
@@ -200,7 +191,7 @@ def create_regression_problem(
             )
 
         pytorch_costs: list[PyTorchCost] = [
-            PyTorchCost(dataset=p, model=model_gen(), loss_fn=torch.nn.MSELoss(), batch_size=batch_size, device=device)
+            PyTorchCost(dataset=p, model=model_gen(), loss_fn=torch.nn.MSELoss(), batch_size=batch_size)
             for p in local_datasets
         ]
         LOGGER.info("... done!")

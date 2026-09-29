@@ -5,7 +5,6 @@ from typing import Any
 
 from decent_array import Array
 from decent_array import interoperability as iop
-from decent_array.types import Devices, Frameworks
 
 from decent_bench.costs._base._cost import Cost
 
@@ -17,30 +16,15 @@ class ZeroCost(Cost):
     This function is used as default for the server in :class:`~decent_bench.networks.FedNetwork`.
     """
 
-    def __init__(
-        self,
-        shape: tuple[int, ...],
-        framework: Frameworks = Frameworks.NUMPY,
-        device: Devices = Devices.CPU,
-    ):
+    def __init__(self, shape: tuple[int, ...]):
         if not all(isinstance(d, int) and d >= 0 for d in shape):
             raise ValueError("shape must be a tuple of non-negative integers")
 
         self._shape = shape
-        self._framework = framework
-        self._device = device
 
     @property
     def shape(self) -> tuple[int, ...]:
         return self._shape
-
-    @property
-    def framework(self) -> Frameworks:
-        return self._framework
-
-    @property
-    def device(self) -> Devices:
-        return self._device
 
     @cached_property
     def m_smooth(self) -> float:
