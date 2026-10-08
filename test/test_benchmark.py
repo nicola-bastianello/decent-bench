@@ -32,7 +32,6 @@ except ModuleNotFoundError:
 # Suppress JAX debug logs that cause issues during cleanup
 logging.getLogger("jax").setLevel(logging.WARNING)
 
-
 def _build_p2p_problem_and_algorithms(
     iterations: int,
     cost_cls: type[LogisticRegressionCost | PyTorchCost],
@@ -98,6 +97,7 @@ def _build_fed_problem_and_algorithms(
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
+@pytest.mark.no_auto_configure
 def test_p2p(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
     configure(Frameworks.NUMPY, Devices.CPU)
     iop.set_seed(123)
@@ -128,6 +128,7 @@ def test_p2p(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
+@pytest.mark.no_auto_configure
 def test_fed(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
     configure(Frameworks.NUMPY, Devices.CPU)
     iop.set_seed(123)
@@ -152,6 +153,7 @@ def test_fed(cost_cls: type[LogisticRegressionCost | PyTorchCost]) -> None:
                 )  # 5 iterations + initial state
 
 
+@pytest.mark.no_auto_configure
 def test_benchmark_rejects_duplicate_algorithm_names() -> None:
     configure(Frameworks.NUMPY, Devices.CPU)
     iop.set_seed(123)

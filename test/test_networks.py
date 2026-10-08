@@ -126,7 +126,7 @@ def test_p2p_network_rejects_mismatched_cost_shapes() -> None:
         Agent(L2RegularizerCost((3,))),
     ]
 
-    with pytest.raises(ValueError, match="same shape, framework, and device"):
+    with pytest.raises(ValueError, match="same shape"):
         P2PNetwork(graph=nx.complete_graph(2), agents=agents)
 
 

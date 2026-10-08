@@ -369,7 +369,7 @@ def _manual_adam_steps(
 
 
 def test_fedlt_adam_multi_step_matches_formula_on_quadratic() -> None:
-    client = Agent(QuadraticCost(A=np.array([[1.0]]), b=np.array([0.0])))
+    client = Agent(QuadraticCost(A=Array(np.array([[1.0]])), b=Array(np.array([0.0]))))
     server = Agent(ZeroCost((1,)))
     algorithm = FedLT(
         step_size=0.1,
@@ -397,7 +397,7 @@ def test_fedlt_adam_multi_step_matches_formula_on_quadratic() -> None:
 
 
 def test_fedlt_adam_moments_reset_each_local_solve() -> None:
-    client = Agent(QuadraticCost(A=np.array([[1.0]]), b=np.array([0.0])))
+    client = Agent(QuadraticCost(A=Array(np.array([[1.0]])), b=Array(np.array([0.0]))))
     server = Agent(ZeroCost((1,)))
     algorithm = FedLT(step_size=0.1, num_local_steps=2, penalty=1.0, local_solver="adam")
     server.initialize(x=Array(np.array([0.0])))

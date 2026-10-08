@@ -286,7 +286,7 @@ def _make_quadratic_agent() -> Agent:
     """Return an agent with a simple 2-D quadratic cost f(x) = x^T x."""
     A = np.eye(2) * 2.0
     b = np.zeros(2)
-    return Agent(QuadraticCost(A, b, 0.0), activation=None, state_snapshot_period=1)
+    return Agent(QuadraticCost(Array(A), Array(b), 0.0), activation=None, state_snapshot_period=1)
 
 
 def _make_empirical_agent(batch_size="all") -> Agent:

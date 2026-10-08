@@ -62,7 +62,7 @@ def solve(
     # linear regression
     elif isinstance(cost, SumCost) and all(isinstance(c, LinearRegressionCost) for c in cost.costs):
         z = iop.zeros(shape=cost.costs[0].shape)
-        Q = sum(c.hessian(z, indices="all") for c in cost.costs) # noqa: N806
+        Q = sum(c.hessian(z, indices="all") for c in cost.costs)  # noqa: N806
         r = sum(c.gradient(z, indices="all") for c in cost.costs)
         try:
             x_optimal = iop.solve(Q, -r)  # type: ignore[arg-type]

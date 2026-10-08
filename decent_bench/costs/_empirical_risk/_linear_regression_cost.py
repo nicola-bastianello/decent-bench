@@ -154,7 +154,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         pred_data = iop.stack(data)
         return pred_data @ x
 
-    def function(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> float:
+    def function(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> float:  # noqa: ARG002, ANN401
         r"""
         Evaluate function at x using datapoints at the given indices.
 
@@ -185,7 +185,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         x: Array,
         indices: EmpiricalRiskIndices = "batch",
         reduction: EmpiricalRiskReduction = "mean",
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ARG002, ANN401
     ) -> Array:
         r"""
         Gradient at x using datapoints at the given indices.
@@ -234,7 +234,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         residuals = iop.dot(A, x) - b  # shape: (n_samples,)
         return iop.expand_dims(residuals, axis=1) * A
 
-    def hessian(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> Array:  # noqa: ARG002
+    def hessian(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         r"""
         Hessian at x using datapoints at the given indices.
 
@@ -259,7 +259,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         _, ATA, _ = self._get_batch_data(indices)  # noqa: N806
         return ATA / len(self.batch_used)
 
-    def proximal(self, x: Array, penalty: float, **kwargs: Any) -> Array:
+    def proximal(self, x: Array, penalty: float, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         r"""
         Proximal at x using the full dataset.
 

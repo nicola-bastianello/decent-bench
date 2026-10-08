@@ -5,7 +5,7 @@ from operator import add
 import numpy as np
 from decent_array import Array
 from decent_array import interoperability as iop
-from decent_array.types import Devices, Frameworks
+from decent_array.types import Frameworks
 
 from decent_bench.costs import Cost, LinearRegressionCost, LogisticRegressionCost, PyTorchCost, QuadraticCost
 from decent_bench.datasets import (

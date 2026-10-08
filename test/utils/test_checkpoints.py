@@ -35,7 +35,6 @@ from decent_bench.networks import Network, P2PNetwork
 from decent_bench.schemes import GaussianNoise, Quantization, UniformActivationRate, UniformDropRate
 from decent_bench.utils._checkpoint_manager import _ZSTD_MAGIC, CheckpointManager  # noqa: PLC2701
 
-
 def _configure_for_checkpoint(
     storage_dir: Path | None = None,
     *,
@@ -120,6 +119,7 @@ def test_init_validates_arguments(tmp_path: Path) -> None:  # noqa: D103
         CheckpointManager(tmp_path / "ckpt", n_checkpoints=-1)
 
 
+@pytest.mark.no_auto_configure
 def test_checkpoint_restores_top_level_agent_keyed_algorithm_dict(tmp_path: Path) -> None:  # noqa: D103
     configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
@@ -136,6 +136,7 @@ def test_checkpoint_restores_top_level_agent_keyed_algorithm_dict(tmp_path: Path
     assert set(loaded_map) == set(problem.network.agents())
 
 
+@pytest.mark.no_auto_configure
 def test_initialize_saves_structure_and_metadata(tmp_path: Path) -> None:  # noqa: D103
     configure(Frameworks.NUMPY, Devices.CPU)
     checkpoint_dir = tmp_path / "ckpt"
@@ -171,6 +172,7 @@ def test_initialize_saves_structure_and_metadata(tmp_path: Path) -> None:  # noq
     assert len(loaded_problem.network.agents()) == 4
 
 
+@pytest.mark.no_auto_configure
 def test_append_metadata_merges_entries(tmp_path: Path) -> None:  # noqa: D103
     configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
@@ -203,6 +205,7 @@ def test_should_checkpoint_logic(tmp_path: Path) -> None:  # noqa: D103
     assert manager._checkpoint_iterations(0) == set()
 
 
+@pytest.mark.no_auto_configure
 def test_save_and_load_checkpoint_roundtrip(tmp_path: Path) -> None:  # noqa: D103
     configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
@@ -240,6 +243,7 @@ def test_save_and_load_checkpoint_roundtrip(tmp_path: Path) -> None:  # noqa: D1
     assert rng_state == {"seed": 123, "python_random_state": random.getstate()}
 
 
+@pytest.mark.no_auto_configure
 def test_load_checkpoint_supports_legacy_uncompressed_pickle(tmp_path: Path) -> None:  # noqa: D103
     configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
@@ -271,6 +275,7 @@ def test_load_checkpoint_supports_legacy_uncompressed_pickle(tmp_path: Path) -> 
     assert rng_state == {"seed": 123}
 
 
+@pytest.mark.no_auto_configure
 def test_mark_unmark_and_load_trial_result(tmp_path: Path) -> None:  # noqa: D103
     configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
@@ -296,6 +301,7 @@ def test_mark_unmark_and_load_trial_result(tmp_path: Path) -> None:  # noqa: D10
     assert manager.is_trial_complete(alg_idx=0, trial=0) is False
 
 
+@pytest.mark.no_auto_configure
 def test_load_benchmark_result_skips_incomplete_algorithms(  # noqa: D103
     tmp_path: Path,
 ) -> None:
@@ -431,6 +437,7 @@ def test_load_metrics_result_reconstructs_only_selected_algorithms(
     assert {algorithm.name for algorithm in loaded.network_views} == {selected_algorithm.name}
 
 
+@pytest.mark.no_auto_configure
 def test_create_backup_and_clear(tmp_path: Path) -> None:  # noqa: D103
     configure(Frameworks.NUMPY, Devices.CPU)
     problem, algorithms = _build_problem_and_algorithms(cost_cls=LogisticRegressionCost)
@@ -456,6 +463,7 @@ def test_create_backup_and_clear(tmp_path: Path) -> None:  # noqa: D103
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
+@pytest.mark.no_auto_configure
 def test_resume_from_checkpoint_with_additional_trials(
     tmp_path: Path,
     cost_cls: type[LogisticRegressionCost | PyTorchCost],
@@ -560,6 +568,7 @@ def test_resume_from_checkpoint_with_additional_trials(
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
+@pytest.mark.no_auto_configure
 def test_resume_from_checkpoint_with_additional_iterations(
     tmp_path: Path,
     cost_cls: type[LogisticRegressionCost | PyTorchCost],
@@ -677,6 +686,7 @@ def test_resume_from_checkpoint_with_additional_iterations(
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
+@pytest.mark.no_auto_configure
 def test_resume_from_checkpoint_with_additional_iterations_and_trials(
     tmp_path: Path,
     cost_cls: type[LogisticRegressionCost | PyTorchCost],
@@ -782,6 +792,7 @@ def test_resume_from_checkpoint_with_additional_iterations_and_trials(
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
+@pytest.mark.no_auto_configure
 def test_resume_from_non_completed_checkpoint(
     tmp_path: Path,
     cost_cls: type[LogisticRegressionCost | PyTorchCost],
@@ -928,6 +939,7 @@ def test_resume_from_non_completed_checkpoint(
 @pytest.mark.filterwarnings(
     "ignore:os.fork\\(\\) was called.*:RuntimeWarning"
 )  # Suppress warnings about fork in JAX during cleanup, causes the test to fail
+@pytest.mark.no_auto_configure
 def test_back_to_back_benchmarks(
     cost_cls: type[LogisticRegressionCost | PyTorchCost],
     max_processes: int,

@@ -146,9 +146,7 @@ def resume_benchmark(  # noqa: PLR0912, PLR0915
             if algorithms is None:
                 raise ValueError("Initial algorithms not found in checkpoint metadata")
 
-            log_listener, manager, mp_context = _init_logging_and_multiprocessing(
-                config_state.log_level, max_processes, problem
-            )
+            log_listener, manager, mp_context = _init_logging_and_multiprocessing(config_state.log_level, max_processes)
 
             LOGGER.debug(f"Loaded checkpoint: algorithms={algorithms}")
         except (FileNotFoundError, KeyError) as e:
@@ -289,9 +287,7 @@ def benchmark(
     if iterations <= 0:
         raise ValueError("`iterations` must be positive")
     _validate_unique_algorithm_names(algorithms)
-    log_listener, manager, mp_context = _init_logging_and_multiprocessing(
-        config_state.log_level, max_processes, benchmark_problem
-    )
+    log_listener, manager, mp_context = _init_logging_and_multiprocessing(config_state.log_level, max_processes)
 
     if checkpoint_manager is not None:
         if not checkpoint_manager.is_empty():
@@ -417,7 +413,6 @@ def _benchmark(
 def _init_logging_and_multiprocessing(
     log_level: int,
     max_processes: int | None,
-    benchmark_problem: BenchmarkProblem,
 ) -> tuple[QueueListener | None, "SyncManager | None", "SpawnContext | None"]:
     # Detect if PyTorch costs are being used to determine multiprocessing context
     if max_processes == 1:
@@ -681,6 +676,7 @@ def _should_use_spawn_context() -> bool:
         Frameworks.JAX,
     }
     from decent_bench.benchmark._configure import get_config  # noqa: PLC0415
+
     config = get_config()
     uses_unsafe_framework = config.framework in unsafe_frameworks
     if uses_unsafe_framework:

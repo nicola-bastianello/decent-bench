@@ -111,15 +111,16 @@ def test_quadratic_cost_matches_direct_formula() -> None:
     A = np.array([[2.0, 1.0], [3.0, 4.0]])
     b = np.array([1.0, -2.0])
     x = Array(np.array([1.0, -1.0]))
-    cost = QuadraticCost(A=A, b=b, c=3.0)
+    cost = QuadraticCost(A=Array(A), b=Array(b), c=3.0)
 
     assert cost.function(x) == pytest.approx(7.0)
     np.testing.assert_allclose(iop.to_numpy(cost.gradient(x)), A @ iop.to_numpy(x) + b)
     np.testing.assert_allclose(iop.to_numpy(cost.hessian(x)), A)
-    np.testing.assert_allclose(iop.to_numpy(cost.proximal(x, penalty=0.5)), np.array([0.3, -0.1]))
+    expected_proximal = np.linalg.solve(0.5 * A + np.eye(2), np.array([1.0, -1.0]) - 0.5 * b)
+    np.testing.assert_allclose(iop.to_numpy(cost.proximal(x, penalty=0.5)), expected_proximal)
     eigvals = np.linalg.eigvalsh(A)
     assert cost.m_smooth == pytest.approx(float(np.max(np.abs(eigvals))))
-    assert cost.m_cvx == pytest.approx(float(np.min(eigvals)))
+    assert np.isnan(cost.m_cvx)
 
 
 @pytest.mark.parametrize(
@@ -172,12 +173,14 @@ def _make_pytorch_cost() -> PyTorchCost:
         model=model,
         loss_fn=torch.nn.MSELoss(),
         batch_size="all",
-        device=Devices.CPU,
     )
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
+@pytest.mark.backend_framework(Frameworks.PYTORCH)
 def test_pytorch_cost_function_and_gradient_match_direct_torch_computation() -> None:
+    from decent_bench.benchmark._configure import get_config
+
     cost = _make_pytorch_cost()
     x = torch.tensor([0.5, -1.0], dtype=torch.float32)
 
@@ -190,8 +193,8 @@ def test_pytorch_cost_function_and_gradient_match_direct_torch_computation() -> 
     loss.backward()
     expected_gradient = expected_model.weight.grad.flatten()
 
-    assert cost.framework == Frameworks.PYTORCH
-    assert cost.device == Devices.CPU
+    assert get_config().framework == Frameworks.PYTORCH
+    assert get_config().device == Devices.CPU
     assert cost.function(x, indices="all") == pytest.approx(float(loss.item()))
     gradient = cost.gradient(x, indices="all")
     assert isinstance(gradient, torch.Tensor)
@@ -200,6 +203,7 @@ def test_pytorch_cost_function_and_gradient_match_direct_torch_computation() -> 
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
+@pytest.mark.backend_framework(Frameworks.PYTORCH)
 def test_pytorch_cost_per_sample_gradient_and_error_paths() -> None:
     cost = _make_pytorch_cost()
     x = torch.tensor([0.5, -1.0], dtype=torch.float32)

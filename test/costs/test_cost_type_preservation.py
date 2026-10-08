@@ -16,7 +16,7 @@ from decent_bench.costs import (
     QuadraticCost,
     SumCost,
 )
-from decent_array.types import Devices, Frameworks
+from decent_array.types import Frameworks
 
 try:
     import torch
@@ -74,7 +74,6 @@ def _simple_pytorch_cost(batch_size: int = 2) -> PyTorchCost:
         model=model,
         loss_fn=loss_fn,
         batch_size=batch_size,
-        device=Devices.CPU,
     )
 
 
@@ -495,7 +494,7 @@ def test_scaled_empirical_with_compound_regularizer_preserves_empirical_behavior
     risk = _simple_linear_regression_cost()
     reg_l1, reg_l2 = _simple_regularizers()
     x = Array(np.array([0.25, -0.75]))
-    prediction_data = [np.array([1.0, 0.0]), np.array([0.0, 1.0])]
+    prediction_data = [Array(np.array([1.0, 0.0])), Array(np.array([0.0, 1.0]))]
     compound = reg_l1 + reg_l2
 
     objective = (2.0 * risk) + compound
@@ -528,7 +527,7 @@ def test_scaled_empirical_falls_back_to_sumcost_for_empirical_and_generic_additi
     risk_a = _simple_linear_regression_cost()
     risk_b = _second_linear_regression_cost()
     x = Array(np.array([0.25, -0.75]))
-    generic = QuadraticCost(A=np.eye(2), b=np.zeros(2))
+    generic = QuadraticCost(A=Array(np.eye(2)), b=Array(np.zeros(2)))
 
     added_empirical = (2.0 * risk_a) + risk_b
     subtracted_scaled = (2.0 * risk_a) - (3.0 * risk_b)
@@ -567,7 +566,7 @@ def test_regularized_empirical_with_more_regularizers_preserves_empirical_behavi
     risk = _simple_linear_regression_cost()
     reg_l1, reg_l2 = _simple_regularizers()
     x = Array(np.array([0.25, -0.75]))
-    prediction_data = [np.array([1.0, 0.0]), np.array([0.0, 1.0])]
+    prediction_data = [Array(np.array([1.0, 0.0])), Array(np.array([0.0, 1.0]))]
 
     objective = risk + reg_l1
     objective_plus = objective + reg_l2
@@ -641,7 +640,7 @@ def test_scaling_regularized_empirical_returns_empirical_scaled_cost() -> None:
     risk = _simple_linear_regression_cost()
     _, reg_l2 = _simple_regularizers()
     x = Array(np.array([0.25, -0.75]))
-    prediction_data = [np.array([1.0, 0.0]), np.array([0.0, 1.0])]
+    prediction_data = [Array(np.array([1.0, 0.0])), Array(np.array([0.0, 1.0]))]
     objective = risk + reg_l2
 
     scaled = 3.0 * objective
@@ -732,9 +731,12 @@ def test_empirical_regularized_cost_proximal_is_explicitly_unsupported() -> None
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
-def test_pytorch_cost_plus_numpy_regularizer_raises_framework_mismatch() -> None:
+@pytest.mark.backend_framework(Frameworks.PYTORCH)
+def test_pytorch_cost_can_be_combined_with_configured_regularizer() -> None:
     cost = _simple_pytorch_cost(batch_size=2)
     reg = L2RegularizerCost(shape=cost.shape)
 
-    with pytest.raises(ValueError, match="Mismatching frameworks"):
-        _ = cost + reg
+    objective = cost + reg
+
+    assert isinstance(objective, EmpiricalRegularizedCost)
+    assert objective.shape == cost.shape

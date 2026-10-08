@@ -340,12 +340,15 @@ def test_randk_compression(k) -> None:
     assert observed_norms == {1.0, 3.0, 4.0}
 
 
-def test_stochastic_quantization_preserves_shape_and_signs() -> None:
+def test_stochastic_quantization_preserves_shape_and_does_not_flip_signs() -> None:
     message = Array(np.array([[3.0, -4.0], [0.0, 1.0]]))
     compressed_message = StochasticQuantization(n_levels=4).compress(message)
 
-    assert iop.to_numpy(compressed_message).shape == iop.to_numpy(message).shape
-    assert np.all(np.sign(iop.to_numpy(compressed_message)) == np.sign(iop.to_numpy(message)))
+    compressed_np = iop.to_numpy(compressed_message)
+    message_np = iop.to_numpy(message)
+
+    assert compressed_np.shape == message_np.shape
+    assert np.all(compressed_np * message_np >= 0)
 
 
 def test_stochastic_quantization_uses_norm_scaled_levels() -> None:

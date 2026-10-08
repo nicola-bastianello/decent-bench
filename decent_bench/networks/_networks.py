@@ -94,7 +94,9 @@ class Network(ABC):  # noqa: B024
             return
 
         first_shape = agents[0].cost.shape
-        mismatches = [f"agent {agent.id}: shape={agent.cost.shape}" for agent in agents[1:] if agent.cost.shape != first_shape]
+        mismatches = [
+            f"agent {agent.id}: shape={agent.cost.shape}" for agent in agents[1:] if agent.cost.shape != first_shape
+        ]
 
         if mismatches:
             raise ValueError(

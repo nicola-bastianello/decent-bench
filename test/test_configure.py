@@ -7,6 +7,8 @@ from decent_array.types import Devices, Frameworks
 from decent_bench.benchmark import configure
 from decent_bench.benchmark._configure import get_checkpoint_manager, get_config
 
+pytestmark = pytest.mark.no_auto_configure
+
 
 def test_configure_sets_process_state_and_checkpoint_options(tmp_path: Path) -> None:  # noqa: D103
     storage_dir = tmp_path / "experiment"

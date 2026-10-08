@@ -6,11 +6,12 @@ from typing import Any
 import pytest
 
 from decent_bench.costs import PyTorchCost
-from decent_array.types import Devices
+from decent_array.types import Devices, Frameworks
 
 torch = pytest.importorskip("torch")
 CUDA = torch.cuda.is_available()
 MPS = torch.backends.mps.is_available()
+pytestmark = pytest.mark.backend_framework(Frameworks.PYTORCH)
 
 
 backends = pytest.mark.parametrize(
@@ -67,7 +68,7 @@ def _make_cost(
 
 
 @backends
-def test_per_sample_gradients_match_individual_gradients() -> None:
+def test_per_sample_gradients_match_individual_gradients(device: Devices) -> None:
     dataset = _make_dataset()
     cost = _make_cost(dataset, max_batch_size=3, batch_size=10)
 
@@ -84,7 +85,7 @@ def test_per_sample_gradients_match_individual_gradients() -> None:
 
 
 @backends
-def test_mean_gradient_matches_mean_of_per_sample_gradients() -> None:
+def test_mean_gradient_matches_mean_of_per_sample_gradients(device: Devices) -> None:
     dataset = _make_dataset()
     cost = _make_cost(dataset, max_batch_size=4, batch_size=9)
 
@@ -99,7 +100,7 @@ def test_mean_gradient_matches_mean_of_per_sample_gradients() -> None:
 
 
 @backends
-def test_max_batch_size_does_not_change_function_or_gradients() -> None:
+def test_max_batch_size_does_not_change_function_or_gradients(device: Devices) -> None:
     dataset = _make_dataset(n_samples=23)
     base_cost = _make_cost(dataset, max_batch_size=23, batch_size=11)
     chunked_cost = _make_cost(dataset, max_batch_size=4, batch_size=11)
@@ -121,7 +122,7 @@ def test_max_batch_size_does_not_change_function_or_gradients() -> None:
 
 
 @backends
-def test_max_batch_size_does_not_change_predict_outputs() -> None:
+def test_max_batch_size_does_not_change_predict_outputs(device: Devices) -> None:
     dataset = _make_dataset(n_samples=15)
     cost_a = _make_cost(dataset, max_batch_size=15, batch_size=8)
     cost_b = _make_cost(dataset, max_batch_size=2, batch_size=8)
@@ -137,7 +138,7 @@ def test_max_batch_size_does_not_change_predict_outputs() -> None:
 
 
 @backends
-def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot() -> None:
+def test_chunked_and_unchunked_costs_match_with_identical_model_snapshot(device: Devices) -> None:
     dataset = _make_dataset(n_samples=21)
 
     torch.manual_seed(21)
@@ -220,7 +221,7 @@ def test_picklable(device: Devices, cost_kwargs: dict[str, Any] | None) -> None:
 
 
 @backends
-def test_local_training_supports_vector_correction() -> None:
+def test_local_training_supports_vector_correction(device: Devices) -> None:
     dataset = _make_dataset(n_samples=7)
     cost = _make_cost(dataset, max_batch_size=7, batch_size=7)
 
@@ -251,7 +252,7 @@ def test_local_training_supports_vector_correction() -> None:
 
 
 @backends
-def test_local_training_scalar_regularizer_contributes_gradient() -> None:
+def test_local_training_scalar_regularizer_contributes_gradient(device: Devices) -> None:
     dataset = _make_dataset(n_samples=7)
     cost = _make_cost(dataset, max_batch_size=7, batch_size=7)
 

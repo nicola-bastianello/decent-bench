@@ -84,7 +84,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         if isinstance(batch_size, str) and batch_size != "all":
             raise ValueError(f"Invalid batch size string. Supported value is 'all', got {batch_size}.")
 
-        class_labels = {y.item() for _, y in dataset}
+        class_labels = {iop.squeeze(y).item() for _, y in dataset}
         if len(class_labels) != 2:
             raise ValueError("Dataset must contain exactly two classes")
 
@@ -156,7 +156,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         sig = _sigmoid(logits)
         return iop.where(sig >= 0.5, self._label_mapping[1], self._label_mapping[0])
 
-    def function(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> float:
+    def function(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> float:  # noqa: ARG002, ANN401
         r"""
         Evaluate function at x using datapoints at the given indices.
 
@@ -195,7 +195,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         x: Array,
         indices: EmpiricalRiskIndices = "batch",
         reduction: EmpiricalRiskReduction = "mean",
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ARG002, ANN401
     ) -> Array:
         r"""
         Gradient at x using datapoints at the given indices.
@@ -247,7 +247,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         residuals = sig - b
         return iop.expand_dims(residuals, axis=1) * A
 
-    def hessian(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> Array:
+    def hessian(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         r"""
         Hessian at x using datapoints at the given indices.
 
@@ -278,7 +278,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         weighted_A = iop.expand_dims(weights, axis=1) * A  # noqa: N806
         return (A.T @ weighted_A) / len(self.batch_used)
 
-    def proximal(self, x: Array, penalty: float, **kwargs: Any) -> Array:
+    def proximal(self, x: Array, penalty: float, **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
         """
         Proximal at x solved using an iterative method.
 
@@ -308,6 +308,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
                 self.A = iop.stack([x for x, _ in self._dataset])
                 targets = iop.stack([y for _, y in self._dataset])
 
+                targets = iop.squeeze(targets, axis=1)
                 self.b = iop.where(targets == self._label_mapping[0], 0, 1)
 
             return self.A, self.b
@@ -315,6 +316,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         A = iop.stack([self._dataset[idx][0] for idx in indices])  # noqa: N806
         targets = iop.stack([self._dataset[idx][1] for idx in indices])
 
+        targets = iop.squeeze(targets, axis=1)
         b = iop.where(targets == self._label_mapping[0], 0, 1)
 
         return A, b

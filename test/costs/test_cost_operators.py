@@ -10,7 +10,7 @@ from decent_array.types import Devices, Frameworks
 def _simple_quadratic(A_scale: float, b_scale: float, c: float = 0.0) -> QuadraticCost:
     A = np.eye(2) * A_scale
     b = np.ones(2) * b_scale
-    return QuadraticCost(A=A, b=b, c=c)
+    return QuadraticCost(A=Array(A), b=Array(b), c=c)
 
 
 class _SimpleCost(Cost):

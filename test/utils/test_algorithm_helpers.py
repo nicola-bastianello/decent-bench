@@ -3,6 +3,7 @@ from copy import deepcopy
 import networkx as nx
 import numpy as np
 import pytest
+from decent_array.types import Frameworks
 
 from decent_array import interoperability as iop
 from decent_bench.agents import Agent
@@ -171,6 +172,7 @@ def test_pytorch_initialization_rejects_non_pytorch_cost() -> None:
         pytorch_initialization(net)
 
 
+@pytest.mark.backend_framework(Frameworks.PYTORCH)
 def test_pytorch_initialization_extracts_flattened_model_parameters() -> None:
     torch = pytest.importorskip("torch")
 

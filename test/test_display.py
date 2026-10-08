@@ -174,8 +174,8 @@ def _build_minimal_benchmark_result() -> BenchmarkResult:
 
 def _build_federated_benchmark_result(iterations: int = 2) -> tuple[BenchmarkResult, FedAvg]:
     clients = [
-        Agent(QuadraticCost(np.eye(1), np.array([0.0]))),
-        Agent(QuadraticCost(np.eye(1), np.array([0.0]))),
+        Agent(QuadraticCost(Array(np.eye(1)), Array(np.array([0.0])))),
+        Agent(QuadraticCost(Array(np.eye(1)), Array(np.array([0.0])))),
     ]
     network = FedNetwork(clients=clients)
     algorithm = FedAvg(step_size=0.1)

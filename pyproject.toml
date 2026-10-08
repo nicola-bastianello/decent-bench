@@ -129,6 +129,10 @@ commands = [
 [tool.pytest.ini_options]
 addopts = "-q -W error"
 testpaths = ["test"]
+markers = [
+  "backend_framework(framework): configure the named backend for a test",
+  "no_auto_configure: test manages configure() state directly",
+]
 
 [tool.mypy]
 strict = true
