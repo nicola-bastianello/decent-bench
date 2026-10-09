@@ -361,8 +361,12 @@ def test_fednova_uploads_normalizer_then_cumulative_gradient() -> None:
 
     np.testing.assert_allclose(network.server().message(clients[0], _NORMALIZER_CHANNEL).value, np.array([2.0]))
     np.testing.assert_allclose(network.server().message(clients[1], _NORMALIZER_CHANNEL).value, np.array([1.0]))
-    np.testing.assert_allclose(network.server().message(clients[0], _CUMULATIVE_GRADIENT_CHANNEL).value, np.array([4.0]))
-    np.testing.assert_allclose(network.server().message(clients[1], _CUMULATIVE_GRADIENT_CHANNEL).value, np.array([4.0]))
+    np.testing.assert_allclose(
+        network.server().message(clients[0], _CUMULATIVE_GRADIENT_CHANNEL).value, np.array([4.0])
+    )
+    np.testing.assert_allclose(
+        network.server().message(clients[1], _CUMULATIVE_GRADIENT_CHANNEL).value, np.array([4.0])
+    )
 
 
 def test_fednova_stores_client_sample_counts_on_server_initialize() -> None:
@@ -549,8 +553,16 @@ def test_fednova_rejects_non_integer_local_step_mapping_values(step_value: objec
         pytest.param({"momentum": -0.1}, "`momentum` must satisfy 0 <= momentum < 1", id="momentum-negative"),
         pytest.param({"momentum": 1.0}, "`momentum` must satisfy 0 <= momentum < 1", id="momentum-too-large"),
         pytest.param({"penalty": -0.1}, "`penalty` must be non-negative", id="penalty-negative"),
-        pytest.param({"server_momentum": -0.1}, "`server_momentum` must satisfy 0 <= server_momentum < 1", id="server_momentum-negative"),
-        pytest.param({"server_momentum": 1.0}, "`server_momentum` must satisfy 0 <= server_momentum < 1", id="server_momentum-too-large"),
+        pytest.param(
+            {"server_momentum": -0.1},
+            "`server_momentum` must satisfy 0 <= server_momentum < 1",
+            id="server_momentum-negative",
+        ),
+        pytest.param(
+            {"server_momentum": 1.0},
+            "`server_momentum` must satisfy 0 <= server_momentum < 1",
+            id="server_momentum-too-large",
+        ),
     ],
 )
 def test_fednova_rejects_invalid_hyperparameters(kwargs: dict[str, float], expected_message: str) -> None:

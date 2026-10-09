@@ -19,7 +19,7 @@ from ._empirical_risk_cost import EmpiricalRiskCost
 
 
 def _sigmoid(x: Array) -> Array:
-    return iop.exp(-iop.logaddexp(0.0, -x))
+    return iop.exp(-iop.logaddexp(iop.zeros_like(x), -x))
 
 
 @tags(Tag.COST, Tag.CLASSIFICATION, Tag.EMPIRICAL_RISK)
@@ -112,7 +112,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         return self._dataset
 
     @cached_property
-    def m_smooth(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def m_smooth(self) -> float:
         r"""
         The cost function's smoothness constant.
 
@@ -125,7 +125,7 @@ class LogisticRegressionCost(EmpiricalRiskCost):
         :attr:`Cost.m_smooth <decent_bench.costs.Cost.m_smooth>`.
         """
         A, _ = self._get_batch_data("all")  # noqa: N806
-        return max(pow(float(iop.norm(A[i,:])), 2) for i in range(A.shape[0])) / 4
+        return max(pow(float(iop.norm(A[i, :])), 2) for i in range(A.shape[0])) / 4
 
     @property
     def m_cvx(self) -> float:
@@ -185,8 +185,8 @@ class LogisticRegressionCost(EmpiricalRiskCost):
 
         """
         A, b = self._get_batch_data(indices)  # noqa: N806
-        Ax = iop.dot(A, x)  # noqa: N806
-        neg_log_sig = iop.logaddexp(0.0, -Ax)
+        Ax = iop.matmul(A, x)  # noqa: N806
+        neg_log_sig = iop.logaddexp(iop.zeros_like(Ax), -Ax)
         cost = iop.sum(b * neg_log_sig + (1.0 - b) * (Ax + neg_log_sig))
         return float(cost.item()) / len(self.batch_used)
 

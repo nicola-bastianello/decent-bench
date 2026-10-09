@@ -15,6 +15,7 @@ from decent_bench.networks import FedNetwork
 from decent_bench.schemes import ClientSelectionScheme, DropScheme, NoDrops
 from decent_bench.costs._decorators import autodecorate_cost_method
 
+
 class TrackingCost(Cost):
     def __init__(self, gradient_value: float = 1.0):
         self.gradient_kwargs: list[dict[str, Any]] = []

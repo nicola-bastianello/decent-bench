@@ -1,5 +1,7 @@
 import networkx as nx
+import numpy as np
 import pytest
+from decent_array import interoperability as iop
 
 from decent_bench.agents import Agent
 from decent_bench.algorithms.federated import (
@@ -150,6 +152,15 @@ def _create_fed_network(impairments: bool, cost_cls: type) -> FedNetwork:
     )
 
 
+def _assert_network_outputs_are_valid(network: P2PNetwork | FedNetwork) -> None:
+    """Check every client and server state after an algorithm run."""
+    for agent in network.graph.nodes:
+        assert agent.x is not None
+        state = iop.to_numpy(agent.x)
+        assert state.shape == agent.cost.shape
+        assert np.isfinite(state).all()
+
+
 @all_p2p_algs
 def test_p2p_algorithm_instantiation(algorithm_cls: type, kwargs: dict[str, float | int]) -> None:
     algorithm = algorithm_cls(**kwargs)
@@ -171,12 +182,13 @@ def test_p2p_algorithm_execution(
     algorithm_cls: type[P2PAlgorithm],
     kwargs: dict[str, float | int],
     impairments: bool,
-) -> None:   
+) -> None:
     algorithm = algorithm_cls(**kwargs)
     network = _create_p2p_network(impairments, LinearRegressionCost)
 
     # Just check that it runs without errors
     algorithm.run(network, num_iterations)
+    _assert_network_outputs_are_valid(network)
 
 
 @pytest.mark.parametrize(
@@ -194,3 +206,4 @@ def test_fed_algorithm_execution(
 
     # Just check that it runs without errors
     algorithm.run(network, num_iterations)
+    _assert_network_outputs_are_valid(network)

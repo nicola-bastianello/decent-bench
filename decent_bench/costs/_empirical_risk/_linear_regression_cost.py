@@ -223,7 +223,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
             return self._per_sample_gradients(x, indices)
 
         A, ATA, b = self._get_batch_data(indices)  # noqa: N806
-        return (iop.dot(ATA, x) - iop.dot(A.T, b)) / len(self.batch_used)
+        return (iop.matmul(ATA, x) - iop.matmul(A.T, b)) / len(self.batch_used)
 
     def _per_sample_gradients(
         self,
@@ -231,7 +231,7 @@ class LinearRegressionCost(EmpiricalRiskCost):
         indices: EmpiricalRiskIndices = "batch",
     ) -> Array:
         A, _, b = self._get_batch_data(indices)  # noqa: N806
-        residuals = iop.dot(A, x) - b  # shape: (n_samples,)
+        residuals = iop.matmul(A, x) - b  # shape: (n_samples,)
         return iop.expand_dims(residuals, axis=1) * A
 
     def hessian(self, x: Array, indices: EmpiricalRiskIndices = "batch", **kwargs: Any) -> Array:  # noqa: ARG002, ANN401
